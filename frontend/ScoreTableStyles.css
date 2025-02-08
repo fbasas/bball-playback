@@ -1,0 +1,28 @@
+.container {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.score-table,
+.lineup-table {
+  margin: 10px;
+  border-collapse: collapse;
+}
+
+.score-table th,
+.score-table td,
+.lineup-table th,
+.lineup-table td {
+  border: 1px solid black;
+  padding: 10px;
+  text-align: center;
+}
+
+h1 {
+  text-align: center;
+}
+
+header {
+  margin-bottom: 1rem;
+}
