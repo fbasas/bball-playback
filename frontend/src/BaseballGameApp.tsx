@@ -1,7 +1,7 @@
 import React from "react";
-import Header from "./components/Header";
-import ScoreTable from "./components/ScoreTable";
-import LineupTable from "./components/LineupTable";
+import Header from "./components/HeaderComponent";
+import ScoreTable from "./components/ScoreTableComponent";
+import LineupTable from "./components/LineupTableComponent";
 import "./App.css";
 
 const App = () => {
