@@ -3,3 +3,4 @@ frontend/.idea
 backend/.idea
 .idea
 frontend/node_modules
+node_modules

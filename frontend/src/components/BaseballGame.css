@@ -1,0 +1,191 @@
+/* Base styles */
+body {
+    background-color: #000;
+    color: #fff;
+    font-family: "console", "Courier New", monospace;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Main container */
+  .game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    background-color: #000;
+  }
+  
+  /* Game board with green border */
+  .game-board {
+    width: 100%;
+    max-width: 1920px;
+    border: 4px solid #00ff00;
+    padding: 4px;
+    background-color: #000;
+  }
+  
+  /* Top section with scoreboard and lineups */
+  .top-section {
+    display: flex;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  
+  /* Scoreboard (Red background) */
+  .scoreboard {
+    flex: 1;
+    margin-right: 4px;
+    background-color: #990000;
+    border: 2px solid #00ff00;
+    padding: 8px;
+    color: #ffff00;
+  }
+  
+  /* Innings row */
+  .innings-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ffff00;
+    padding-bottom: 4px;
+  }
+  
+  .team-name-spacer {
+    width: 80px;
+  }
+  
+  .innings-container {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    padding-right: 8px;
+  }
+  
+  .stats-container {
+    width: 80px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .inning-number,
+  .stat-label {
+    width: 16px;
+    text-align: center;
+    color: #ffff00;
+  }
+  
+  /* Teams and scores */
+  .teams-container {
+    margin-bottom: 4px;
+  }
+  
+  .team-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  
+  .team-name {
+    width: 80px;
+    font-weight: bold;
+    color: #ffff00;
+  }
+  
+  .score {
+    width: 16px;
+    text-align: center;
+    color: #fff;
+  }
+  
+  /* Game info */
+  .game-info {
+    margin-top: 16px;
+  }
+  
+  .pitching-info {
+    margin-bottom: 8px;
+  }
+  
+  .label {
+    color: #ffff00;
+  }
+  
+  .value {
+    color: #ccc;
+  }
+  
+  .out-indicator {
+    float: right;
+    color: #ffff00;
+  }
+  
+  /* Lineup panel (Blue background) */
+  .lineup-panel {
+    width: 320px;
+    background-color: #000099;
+    border: 2px solid #00ff00;
+    padding: 8px;
+    color: #fff;
+  }
+  
+  .lineup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  
+  .team-column {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .lineup-team-name {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  
+  .player-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .player-row {
+    display: flex;
+  }
+  
+  .position {
+    width: 32px;
+  }
+  
+  .current-batter {
+    background-color: #ffff00;
+    color: #000099;
+  }
+  
+  /* Game log */
+  .game-log {
+    width: 100%;
+    background-color: #000;
+    /*border: 2px solid #00ff00;*/
+
+    color: #ccc;
+    height: 256px;
+    overflow-y: auto;
+  }
+  
+  .log-entry {
+    margin-bottom: 4px;
+  }
+  
+  /* Font face for the retro terminal look */
+  @font-face {
+    font-family: "console";
+    src: url("https://fonts.googleapis.com/css2?family=console&display=swap");
+  }
+  
+  
