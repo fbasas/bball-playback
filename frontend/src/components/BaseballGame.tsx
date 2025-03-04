@@ -173,13 +173,17 @@ function BaseballGame() {
               <div className="pitching-info">
                 <span className="label">Pitching: </span>
                 <span className="value">{currentPitcherName}</span>
-                <span className="out-indicator">OUT {gameState.game.outs}</span>
               </div>
 
               <div className="batting-info">
                 <span className="label">Batting : </span>
                 <span className="value">{currentBatter}</span>
+                
+              </div>
+
+              <div className="game-info">
                 <span className="inning-indicator">{isTopInning ? "TOP" : "BOT"} {currentInning}</span>
+                <span className="out-indicator">OUT {gameState.game.outs}</span>
               </div>
             </div>
           </div>

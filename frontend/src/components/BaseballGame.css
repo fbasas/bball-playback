@@ -106,6 +106,10 @@ body {
   }
   
   .pitching-info {
+    margin-bottom: 16px;
+  }
+
+  .game-info {
     margin-bottom: 8px;
   }
   
