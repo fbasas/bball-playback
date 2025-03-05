@@ -1,82 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, KeyboardEvent } from "react"
 import "./BaseballGame.css"
+import { getFullName, BaseballState, Player } from "../types/BaseballTypes"
+import { initialBaseballState } from "../data/initialBaseballState"
 
 function BaseballGame() {
-  // Team definitions
+  // Combined game state object suitable for REST API
+  const [gameState, setGameState] = useState<BaseballState>(initialBaseballState);
+
+  // Create a teams object for convenience
   const teams = {
     home: {
-      id: "heroes",
-      displayName: "HEROES",
-      shortName: "Heroes"
+      id: gameState.home.id,
+      displayName: gameState.home.displayName,
+      shortName: gameState.home.shortName
     },
     away: {
-      id: "stars",
-      displayName: "STARS",
-      shortName: "Stars"
+      id: gameState.visitors.id,
+      displayName: gameState.visitors.displayName,
+      shortName: gameState.visitors.shortName
     }
-  }
-
-  // Combined game state object suitable for REST API
-  const [gameState, setGameState] = useState({
-    game: {
-      inning: 1,
-      isTopInning: true,
-      outs: 0,
-      log: [
-        "Hamilton hits a hard ground ball to the first baseman.",
-        "Mize steps on first for the out.",
-      ]
-    },
-    teams: {
-      [teams.home.id]: {
-        currentPitcher: (isTopInning: boolean) => !isTopInning ? "Bob Gibson" : "Mordecai Brown",
-        lineup: [
-          { position: "LF", firstName: "Billy", lastName: "Hamilton" },
-          { position: "1B", firstName: "Ed", lastName: "Delahanty" },
-          { position: "RF", firstName: "Chuck", lastName: "Klein" },
-          { position: "CF", firstName: "Mel", lastName: "Ott" },
-          { position: "3B", firstName: "Rogers", lastName: "Hornsby" },
-          { position: "C", firstName: "Gabby", lastName: "Hartnett" },
-          { position: "SS", firstName: "Honus", lastName: "Wagner" },
-          { position: "2B", firstName: "Frankie", lastName: "Frisch" },
-          { position: "P", firstName: "Mordecai", lastName: "Brown" }
-        ],
-        stats: {
-          innings: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-          runs: 0,
-          hits: 0,
-          errors: 0
-        },
-        currentBatter: (isTopInning: boolean) => isTopInning ? null : "Hamilton"
-      },
-      [teams.away.id]: {
-        currentPitcher: (isTopInning: boolean) => isTopInning ? "Mordecai Brown" : "Bob Gibson",
-        lineup: [
-          { position: "3B", firstName: "Brooks", lastName: "Robinson" },
-          { position: "1B", firstName: "Johnny", lastName: "Mize" },
-          { position: "LF", firstName: "Stan", lastName: "Musial" },
-          { position: "CF", firstName: "Willie", lastName: "Mays" },
-          { position: "RF", firstName: "Hank", lastName: "Aaron" },
-          { position: "C", firstName: "Roy", lastName: "Campanella" },
-          { position: "2B", firstName: "Joe", lastName: "Morgan" },
-          { position: "SS", firstName: "Pee Wee", lastName: "Reese" },
-          { position: "P", firstName: "Bob", lastName: "Gibson" }
-        ],
-        stats: {
-          innings: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-          runs: 0,
-          hits: 0,
-          errors: 0
-        },
-        currentBatter: (isTopInning: boolean) => isTopInning ? "Hamilton" : null
-      }
-    }
-  })
-
-  // Helper function to get full name
-  const getFullName = (firstName: string, lastName: string) => `${firstName} ${lastName}`
+  };
 
   // Derived values for convenience
   const isTopInning = gameState.game.isTopInning
@@ -86,24 +31,56 @@ function BaseballGame() {
   
   // Get current batter and pitcher full names
   const currentBatterLastName = isTopInning ? 
-    gameState.teams[teams.away.id].currentBatter(isTopInning) : 
-    gameState.teams[teams.home.id].currentBatter(isTopInning)
+    gameState.visitors.currentBatter(isTopInning) : 
+    gameState.home.currentBatter(isTopInning)
     
   // Find the current batter's full information
   const currentBatterTeamId = isTopInning ? teams.away.id : teams.home.id
-  const currentBatterInfo = gameState.teams[currentBatterTeamId].lineup.find(
-    player => player.lastName === currentBatterLastName
+  const currentBatterTeam = isTopInning ? gameState.visitors : gameState.home
+  const currentBatterInfo = currentBatterTeam.lineup.find(
+    (player: Player) => player.lastName === currentBatterLastName
   )
   
   // Get the full name of the current batter if found
   const currentBatter = currentBatterInfo ? 
     getFullName(currentBatterInfo.firstName, currentBatterInfo.lastName) : 
     currentBatterLastName || ""
-  
+
   // Get the current pitcher's name
   const currentPitcherName = isTopInning ? 
-    gameState.teams[teams.home.id].currentPitcher(isTopInning) : 
-    gameState.teams[teams.away.id].currentPitcher(isTopInning)
+    gameState.home.currentPitcher(isTopInning) : 
+    gameState.visitors.currentPitcher(isTopInning)
+
+  // Function to handle the next play action
+  const handleNextPlay = () => {
+    // For now, just add a log entry to demonstrate functionality
+    const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
+    
+    setGameState(prevState => ({
+      ...prevState,
+      game: {
+        ...prevState.game,
+        log: newLog
+      }
+    }));
+  };
+
+  // Add keyboard event listener for Enter key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent<Document>) => {
+      if (event.key === 'Enter') {
+        handleNextPlay();
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('keydown', handleKeyDown as any);
+
+    // Clean up
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown as any);
+    };
+  }, [gameState]); // Re-add listener when gameState changes
 
   return (
     <div className="game-container">
@@ -140,50 +117,50 @@ function BaseballGame() {
               <div className={`team-row ${battingTeam.id === teams.home.id ? "batting-team" : ""}`}>
                 <span className="team-name">{teams.home.displayName}</span>
                 <div className="innings-container">
-                  {gameState.teams[teams.home.id].stats.innings.map((score, i) => (
+                  {gameState.home.stats.innings.map((score: number, i: number) => (
                     <span key={i} className="score">
                       {score}
                     </span>
                   ))}
                 </div>
                 <div className="stats-container">
-                  <span className="score">{gameState.teams[teams.home.id].stats.runs}</span>
-                  <span className="score">{gameState.teams[teams.home.id].stats.hits}</span>
-                  <span className="score">{gameState.teams[teams.home.id].stats.errors}</span>
+                  <span className="score">{gameState.home.stats.runs}</span>
+                  <span className="score">{gameState.home.stats.hits}</span>
+                  <span className="score">{gameState.home.stats.errors}</span>
                 </div>
               </div>
               <div className={`team-row ${battingTeam.id === teams.away.id ? "batting-team" : ""}`}>
                 <span className="team-name">{teams.away.displayName}</span>
                 <div className="innings-container">
-                  {gameState.teams[teams.away.id].stats.innings.map((score, i) => (
+                  {gameState.visitors.stats.innings.map((score: number, i: number) => (
                     <span key={i} className="score">
                       {score}
                     </span>
                   ))}
                 </div>
                 <div className="stats-container">
-                  <span className="score">{gameState.teams[teams.away.id].stats.runs}</span>
-                  <span className="score">{gameState.teams[teams.away.id].stats.hits}</span>
-                  <span className="score">{gameState.teams[teams.away.id].stats.errors}</span>
+                  <span className="score">{gameState.visitors.stats.runs}</span>
+                  <span className="score">{gameState.visitors.stats.hits}</span>
+                  <span className="score">{gameState.visitors.stats.errors}</span>
                 </div>
               </div>
             </div>
 
             <div className="game-info">
-              <div className="pitching-info">
+              <div className="pitching-and-batting-info">
                 <span className="label">Pitching: </span>
                 <span className="value">{currentPitcherName}</span>
-              </div>
-
-              <div className="batting-info">
+                <div/>
                 <span className="label">Batting : </span>
                 <span className="value">{currentBatter}</span>
-                
               </div>
 
-              <div className="game-info">
-                <span className="inning-indicator">{isTopInning ? "TOP" : "BOT"} {currentInning}</span>
-                <span className="out-indicator">OUT {gameState.game.outs}</span>
+              <div className="inning-and-outs-info">
+                <span className="label">Inning: </span>
+                <span className="value">{isTopInning ? "TOP" : "BOT"} {currentInning}</span>
+                <div/>
+                <span className="label">Out: </span>
+                <span className="value">{gameState.game.outs}</span>
               </div>
             </div>
           </div>
@@ -194,7 +171,7 @@ function BaseballGame() {
               <div className="team-column">
                 <div className="lineup-team-name">{teams.home.shortName}</div>
                 <div className="player-list">
-                  {gameState.teams[teams.home.id].lineup.map((player, index) => (
+                  {gameState.home.lineup.map((player: Player, index: number) => (
                     <div 
                       key={index} 
                       className={`player-row ${currentBatterLastName === player.lastName ? "current-batter" : ""}`}
@@ -208,7 +185,7 @@ function BaseballGame() {
               <div className="team-column">
                 <div className="lineup-team-name">{teams.away.shortName}</div>
                 <div className="player-list">
-                  {gameState.teams[teams.away.id].lineup.map((player, index) => (
+                  {gameState.visitors.lineup.map((player: Player, index: number) => (
                     <div 
                       key={index}
                       className={`player-row ${currentBatterLastName === player.lastName ? "current-batter" : ""}`}
@@ -225,11 +202,22 @@ function BaseballGame() {
 
         {/* Bottom section - Game Log */}
         <div className="game-log">
-          {gameState.game.log.map((log, index) => (
+          {gameState.game.log.map((entry, index) => (
             <div key={index} className="log-entry">
-              {log}
+              {entry}
             </div>
           ))}
+        </div>
+
+        {/* Next Play Button */}
+        <div className="next-play-container">
+          <button 
+            className="next-play-button" 
+            onClick={handleNextPlay}
+            title="Press Enter or click to advance to the next play"
+          >
+            Next Play
+          </button>
         </div>
       </div>
     </div>
