@@ -16,12 +16,15 @@ body {
     min-height: 100vh;
     padding: 16px;
     background-color: #000;
+    width: 85%;
+    max-width: 85%;
+    margin: 0 auto;
   }
   
   /* Game board with green border */
   .game-board {
     width: 100%;
-    max-width: 1920px;
+    max-width: 1632px;
     border: 4px solid #00ff00;
     padding: 4px;
     background-color: #000;
@@ -36,7 +39,7 @@ body {
   
   /* Scoreboard (Red background) */
   .scoreboard {
-    flex: 1;
+    flex: 0.675;
     margin-right: 4px;
     background-color: #990000;
     border: 2px solid #00ff00;
@@ -47,34 +50,52 @@ body {
   /* Innings row */
   .innings-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     margin-bottom: 8px;
     border-bottom: 1px solid #ffff00;
     padding-bottom: 4px;
   }
   
   .team-name-spacer {
-    width: 80px;
+    width: 160px;
+    margin-right: 10px;
   }
   
   .innings-container {
-    flex: 1;
+    flex: 0.7;
     display: flex;
-    justify-content: space-between;
-    padding-right: 8px;
+    justify-content: space-evenly;
+    padding-right: 35px;
+    margin-right: 35px;
+  }
+  
+  /* Make sure team row innings containers match the header */
+  .team-row .innings-container {
+    flex: 0.7;
+    justify-content: space-evenly;
+    padding-right: 35px;
+    margin-right: 35px;
   }
   
   .stats-container {
-    width: 80px;
+    width: 100px;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-evenly;
   }
   
   .inning-number,
   .stat-label {
-    width: 16px;
+    width: 20px;
     text-align: center;
     color: #ffff00;
+  }
+  
+  .inning-number {
+    margin: 0 5px;
+  }
+  
+  .stat-label {
+    margin: 0 5px;
   }
   
   /* Teams and scores */
@@ -84,20 +105,25 @@ body {
   
   .team-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     margin-bottom: 4px;
   }
   
   .team-name {
-    width: 80px;
+    width: 160px;
     font-weight: bold;
     color: #ffff00;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .score {
-    width: 16px;
+    width: 20px;
     text-align: center;
     color: #fff;
+    margin: 0 5px;
   }
   
   /* Game info */
@@ -128,11 +154,12 @@ body {
   
   /* Lineup panel (Blue background) */
   .lineup-panel {
-    width: 320px;
+    width: 468px;
     background-color: #000099;
     border: 2px solid #00ff00;
     padding: 8px;
     color: #fff;
+    flex: 0.625;
   }
   
   .lineup-grid {
@@ -163,7 +190,7 @@ body {
   }
   
   .position {
-    width: 32px;
+    width: 40px;
   }
   
   .current-batter {
@@ -176,14 +203,49 @@ body {
     width: 100%;
     background-color: #000;
     /*border: 2px solid #00ff00;*/
-
     color: #ccc;
-    height: 256px;
+    height: 272px;
     overflow-y: auto;
+    margin-bottom: 16px;
   }
   
   .log-entry {
     margin-bottom: 4px;
+  }
+  
+  /* Next Play Button */
+  .next-play-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  
+  .next-play-button {
+    background-color: #000;
+    color: #00ff00;
+    border: 2px solid #00ff00;
+    padding: 9px 18px;
+    font-family: "console", "Courier New", monospace;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.2s ease;
+  }
+  
+  .next-play-button:hover {
+    background-color: #00ff00;
+    color: #000;
+  }
+  
+  .next-play-button:active {
+    transform: scale(0.98);
+  }
+  
+  .next-play-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 255, 0, 0.5);
   }
   
   /* Font face for the retro terminal look */
