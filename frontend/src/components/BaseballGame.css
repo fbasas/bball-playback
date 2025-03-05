@@ -2,7 +2,7 @@
 body {
     background-color: #000;
     color: #fff;
-    font-family: "console", "Courier New", monospace;
+    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
     margin: 0;
     padding: 0;
   }
@@ -209,26 +209,23 @@ body {
   
   /* Game log */
   .game-log {
-    flex: 1; /* Take up all available space */
+    flex: 1;
     background-color: #000;
-    border: 2px solid #00ff00;
     color: #ccc;
-    height: 220px;
+    height: 200px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
     padding: 8px;
+    scroll-behavior: smooth;
   }
   
   .log-entry {
     margin-bottom: 4px;
-    font-size: 14px;
+    line-height: 1.3;
     color: #ccc;
   }
   
   .latest-entry {
     margin-top: 5px;
-    border-top: 1px dashed #444;
     padding-top: 5px;
   }
   
@@ -237,6 +234,9 @@ body {
     color: #00ff00;
     padding: 2px 0;
     max-width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
   }
   
   /* Next Play Button */
@@ -251,7 +251,7 @@ body {
     color: #00ff00;
     border: 2px solid #00ff00;
     padding: 9px 18px;
-    font-family: "console", "Courier New", monospace;
+    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
     font-size: 17px;
     font-weight: bold;
     cursor: pointer;

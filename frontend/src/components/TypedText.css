@@ -1,15 +1,24 @@
 .typed-text {
-  font-family: "console", "Courier New", monospace;
+  font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.3;
   font-size: 14px;
+  max-height: 300px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
-.typed-text::after {
-  content: '|';
+.typed-line {
+  min-height: 1.3em;
+  position: relative;
+}
+
+/* Cursor styling */
+.cursor {
   color: #00ff00;
   animation: blink 1s step-end infinite;
+  display: inline-block;
 }
 
 @keyframes blink {

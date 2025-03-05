@@ -10,6 +10,7 @@ export const initialBaseballState: BaseballState = {
     onSecond: "Mays",
     onThird: "Robinson",
     log: [
+      "The 1927 Yankees are up to bat against the 2024 Dodgers.",
       "Hamilton hits a hard ground ball to the first baseman.",
       "Mize steps on first for the out.",
     ]

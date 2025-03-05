@@ -53,8 +53,12 @@ function BaseballGame() {
   // Function to handle the next play action
   const handleNextPlay = () => {
     // Don't add new entries while typing is in progress
-    if (!isTypingComplete) return;
+    if (!isTypingComplete) {
+      console.log("Typing not complete, ignoring next play");
+      return;
+    }
     
+    console.log("Adding new log entry");
     // For now, just add a log entry to demonstrate functionality
     const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
     
@@ -67,22 +71,52 @@ function BaseballGame() {
     }));
   };
 
-  // State to track the most recent log entry for typing animation
-  const [currentLogEntry, setCurrentLogEntry] = useState<string>("");
+  // State to track typing completion
   const [isTypingComplete, setIsTypingComplete] = useState(true);
   
-  // Update the current log entry when the log changes
+  // State to track how many log entries have been rendered
+  const [renderedEntryCount, setRenderedEntryCount] = useState(0);
+  
+  // Reset the game state when the component mounts
+  useEffect(() => {
+    // Initialize with initial state
+    setGameState(initialBaseballState);
+    // Start with no entries rendered
+    setRenderedEntryCount(0);
+    // Start with typing NOT complete so first entry can begin
+    setIsTypingComplete(false);
+  }, []);
+
+  // Reset typing state when the log changes
   useEffect(() => {
     if (gameState.game.log.length > 0) {
-      const latestEntry = gameState.game.log[gameState.game.log.length - 1];
-      setCurrentLogEntry(latestEntry);
-      setIsTypingComplete(false);
+      // If no entries have been rendered yet, start with the first one
+      if (renderedEntryCount === 0) {
+        setIsTypingComplete(false);
+        setRenderedEntryCount(1);
+      }
+      // If a new entry was added and we're ready for it
+      else if (gameState.game.log.length > renderedEntryCount && isTypingComplete) {
+        setIsTypingComplete(false);
+        setRenderedEntryCount(prev => prev + 1);
+      }
     }
-  }, [gameState.game.log.length]);
+  }, [gameState.game.log.length, renderedEntryCount, isTypingComplete]);
 
-  // Handle typing completion
-  const handleTypingComplete = () => {
-    setIsTypingComplete(true);
+  // Handle typing completion for the current entry
+  const handleEntryTypingComplete = () => {
+    console.log("Entry typing complete, renderedEntryCount:", renderedEntryCount, "log length:", gameState.game.log.length);
+    
+    // If there are more entries to show, increment the rendered count and keep typing not complete
+    if (renderedEntryCount < gameState.game.log.length) {
+      console.log("Moving to next entry");
+      setIsTypingComplete(false);
+      setRenderedEntryCount(prev => prev + 1);
+    } else {
+      // All entries have been shown and typed
+      console.log("All entries shown, setting isTypingComplete to true");
+      setIsTypingComplete(true);
+    }
   };
 
   // Add keyboard event listener for Enter key
@@ -223,20 +257,15 @@ function BaseballGame() {
         {/* Bottom section - Game Log */}
         <div className="bottom-section">
           <div className="game-log">
-            {gameState.game.log.slice(0, -1).map((entry, index) => (
-              <div key={index} className="log-entry">
-                {entry}
-              </div>
-            ))}
-            {currentLogEntry && (
-              <div className="log-entry latest-entry">
-                <TypedText 
-                  text={currentLogEntry} 
-                  typingSpeed={20}
-                  className="typed-log-entry"
-                  onComplete={handleTypingComplete}
-                />
-              </div>
+            {renderedEntryCount > 0 && gameState.game.log.length > 0 && (
+              <TypedText 
+                text={gameState.game.log[renderedEntryCount - 1]} 
+                typingSpeed={20}
+                className="typed-log-entry"
+                onComplete={handleEntryTypingComplete}
+                clearHistory={false}
+                lineDelay={1000}
+              />
             )}
           </div>
         </div>
