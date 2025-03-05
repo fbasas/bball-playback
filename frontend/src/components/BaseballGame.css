@@ -243,7 +243,7 @@ body {
   .next-play-container {
     display: flex;
     justify-content: center;
-    margin: 0 auto 12px; /* Reduced from 16px */
+    margin: 8px auto 12px; /* Increased from 4px to 8px to move button down more */
   }
   
   .next-play-button {
