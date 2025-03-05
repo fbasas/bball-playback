@@ -1,0 +1,22 @@
+.typed-text {
+  font-family: "console", "Courier New", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.3;
+  font-size: 14px;
+}
+
+.typed-text::after {
+  content: '|';
+  color: #00ff00;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  from, to {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+} 

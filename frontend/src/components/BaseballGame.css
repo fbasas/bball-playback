@@ -28,6 +28,8 @@ body {
     border: 4px solid #00ff00;
     padding: 4px;
     background-color: #000;
+    display: flex;
+    flex-direction: column;
   }
   
   /* Top section with scoreboard and lineups */
@@ -198,26 +200,50 @@ body {
     color: #000099;
   }
   
+  /* Bottom section with game log */
+  .bottom-section {
+    display: flex;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  
   /* Game log */
   .game-log {
-    width: 100%;
+    flex: 1; /* Take up all available space */
     background-color: #000;
-    /*border: 2px solid #00ff00;*/
+    border: 2px solid #00ff00;
     color: #ccc;
-    height: 272px;
+    height: 220px;
     overflow-y: auto;
-    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
   }
   
   .log-entry {
     margin-bottom: 4px;
+    font-size: 14px;
+    color: #ccc;
+  }
+  
+  .latest-entry {
+    margin-top: 5px;
+    border-top: 1px dashed #444;
+    padding-top: 5px;
+  }
+  
+  .typed-log-entry {
+    font-weight: bold;
+    color: #00ff00;
+    padding: 2px 0;
+    max-width: 100%;
   }
   
   /* Next Play Button */
   .next-play-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 16px;
+    margin: 0 auto 12px; /* Reduced from 16px */
   }
   
   .next-play-button {

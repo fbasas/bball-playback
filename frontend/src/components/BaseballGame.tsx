@@ -4,6 +4,7 @@ import { useState, useEffect, KeyboardEvent } from "react"
 import "./BaseballGame.css"
 import { getFullName, BaseballState, Player } from "../types/BaseballTypes"
 import { initialBaseballState } from "../data/initialBaseballState"
+import TypedText from "./TypedText"
 
 function BaseballGame() {
   // Combined game state object suitable for REST API
@@ -27,7 +28,6 @@ function BaseballGame() {
   const isTopInning = gameState.game.isTopInning
   const currentInning = gameState.game.inning
   const battingTeam = isTopInning ? teams.away : teams.home
-  const fieldingTeam = isTopInning ? teams.home : teams.away
   
   // Get current batter and pitcher full names
   const currentBatterLastName = isTopInning ? 
@@ -35,7 +35,6 @@ function BaseballGame() {
     gameState.home.currentBatter(isTopInning)
     
   // Find the current batter's full information
-  const currentBatterTeamId = isTopInning ? teams.away.id : teams.home.id
   const currentBatterTeam = isTopInning ? gameState.visitors : gameState.home
   const currentBatterInfo = currentBatterTeam.lineup.find(
     (player: Player) => player.lastName === currentBatterLastName
@@ -53,6 +52,9 @@ function BaseballGame() {
 
   // Function to handle the next play action
   const handleNextPlay = () => {
+    // Don't add new entries while typing is in progress
+    if (!isTypingComplete) return;
+    
     // For now, just add a log entry to demonstrate functionality
     const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
     
@@ -63,6 +65,24 @@ function BaseballGame() {
         log: newLog
       }
     }));
+  };
+
+  // State to track the most recent log entry for typing animation
+  const [currentLogEntry, setCurrentLogEntry] = useState<string>("");
+  const [isTypingComplete, setIsTypingComplete] = useState(true);
+  
+  // Update the current log entry when the log changes
+  useEffect(() => {
+    if (gameState.game.log.length > 0) {
+      const latestEntry = gameState.game.log[gameState.game.log.length - 1];
+      setCurrentLogEntry(latestEntry);
+      setIsTypingComplete(false);
+    }
+  }, [gameState.game.log.length]);
+
+  // Handle typing completion
+  const handleTypingComplete = () => {
+    setIsTypingComplete(true);
   };
 
   // Add keyboard event listener for Enter key
@@ -80,7 +100,7 @@ function BaseballGame() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown as any);
     };
-  }, [gameState]); // Re-add listener when gameState changes
+  }, [gameState, isTypingComplete]); // Re-add listener when gameState or typing state changes
 
   return (
     <div className="game-container">
@@ -201,12 +221,24 @@ function BaseballGame() {
         </div>
 
         {/* Bottom section - Game Log */}
-        <div className="game-log">
-          {gameState.game.log.map((entry, index) => (
-            <div key={index} className="log-entry">
-              {entry}
-            </div>
-          ))}
+        <div className="bottom-section">
+          <div className="game-log">
+            {gameState.game.log.slice(0, -1).map((entry, index) => (
+              <div key={index} className="log-entry">
+                {entry}
+              </div>
+            ))}
+            {currentLogEntry && (
+              <div className="log-entry latest-entry">
+                <TypedText 
+                  text={currentLogEntry} 
+                  typingSpeed={20}
+                  className="typed-log-entry"
+                  onComplete={handleTypingComplete}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Next Play Button */}
