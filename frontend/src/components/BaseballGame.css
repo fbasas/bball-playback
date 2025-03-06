@@ -5,6 +5,16 @@ body {
     font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
     margin: 0;
     padding: 0;
+    min-width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  
+  #root {
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
   
   /* Main container */
@@ -12,19 +22,19 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 100vh;
     padding: 16px;
     background-color: #000;
-    width: 85%;
-    max-width: 85%;
+    width: 100%;
+    max-width: 1020px;
     margin: 0 auto;
   }
   
   /* Game board with green border */
   .game-board {
     width: 100%;
-    max-width: 1632px;
+    max-width: 1020px;
     border: 4px solid #00ff00;
     padding: 4px;
     background-color: #000;
@@ -51,7 +61,7 @@ body {
     flex: 1;
     background-color: #000;
     color: #ccc;
-    height: 200px;
+    height: 220px;
     overflow-y: auto;
     padding: 8px;
     padding-bottom: 24px;
