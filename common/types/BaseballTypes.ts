@@ -49,6 +49,7 @@ export interface GameState {
 
 // Complete baseball state
 export interface BaseballState {
+  gameId: number;
   game: GameState;
   home: TeamState;
   visitors: TeamState;

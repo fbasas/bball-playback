@@ -91,14 +91,53 @@ body {
     font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
   }
   
-  /* Next Play Button */
-  .next-play-container {
+  /* Game ID Display */
+  .status-bar-container {
+    display: flex;
+    align-items: flex-start;
+    border-top: 1px solid #00ff00;
+    background-color: #001a00;
+    padding: 4px;
+  }
+  
+  .info-button {
+    background-color: #000;
+    color: #00ff00;
+    border: 1px solid #00ff00;
+    padding: 2px 8px;
+    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
+    font-size: 12px;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+  
+  .info-button:hover {
+    background-color: #00ff00;
+    color: #000;
+  }
+  
+  .status-bar {
+    border-top: 1px solid #00ff00;
+    background-color: #001a00;
+    padding: 8px;
+  }
+  
+  .status-item {
+    color: #00ff00;
+    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  
+  /* Control Buttons */
+  .control-buttons-container {
     display: flex;
     justify-content: center;
+    gap: 16px;
     margin: 8px auto 12px;
   }
   
-  .next-play-button {
+  .next-play-button, .info-button {
     background-color: #000;
     color: #00ff00;
     border: 2px solid #00ff00;
@@ -112,16 +151,22 @@ body {
     transition: all 0.2s ease;
   }
   
-  .next-play-button:hover {
+  .info-button {
+    /* Slightly different styling for INFO button */
+    font-size: 15px;
+    padding: 9px 14px;
+  }
+  
+  .next-play-button:hover, .info-button:hover {
     background-color: #00ff00;
     color: #000;
   }
   
-  .next-play-button:active {
+  .next-play-button:active, .info-button:active {
     transform: scale(0.98);
   }
   
-  .next-play-button:focus {
+  .next-play-button:focus, .info-button:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(0, 255, 0, 0.5);
   }

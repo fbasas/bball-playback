@@ -10,8 +10,21 @@ import Scoreboard from "./Scoreboard"
 import LineupPanel from "./LineupPanel"
 
 function BaseballGame() {
+  // Get gameId from URL parameters
+  const getGameIdFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const gameId = parseInt(params.get('gameId') || '-1');
+    return isNaN(gameId) ? -1 : gameId;
+  };
+
+  // Status bar visibility state
+  const [isStatusBarVisible, setIsStatusBarVisible] = useState(false);
+
   // Combined game state object suitable for REST API
-  const [gameState, setGameState] = useState<BaseballState>(initialBaseballState);
+  const [gameState, setGameState] = useState<BaseballState>({
+    ...initialBaseballState,
+    gameId: getGameIdFromUrl()
+  });
 
   // API endpoint for game state updates
   const gameEndpoint = `${config.api.baseUrl}${config.api.endpoints.game}`;
@@ -113,8 +126,11 @@ function BaseballGame() {
 
   // Reset the game state when the component mounts
   useEffect(() => {
-    // Initialize with initial state
-    setGameState(initialBaseballState);
+    // Initialize with initial state but preserve the gameId from URL
+    setGameState(prevState => ({
+      ...initialBaseballState,
+      gameId: getGameIdFromUrl()
+    }));
     // Start with no entries rendered
     setRenderedEntryCount(0);
     // Start with typing NOT complete so first entry can begin
@@ -224,16 +240,32 @@ function BaseballGame() {
             )}
           </div>
         </div>
+
+        {/* Status Bar */}
+        {isStatusBarVisible && (
+          <div className="status-bar">
+            <div className="status-item">
+              Game ID: {gameState.gameId ?? 'undefined'}
+            </div>
+            {/* More status items will be added here later */}
+          </div>
+        )}
       </div>
 
-      {/* Next Play Button */}
-      <div className="next-play-container">
+      {/* Control Buttons */}
+      <div className="control-buttons-container">
         <button 
           className="next-play-button" 
           onClick={handleNextPlay}
           title="Press Enter or click to advance to the next play"
         >
           Next Play
+        </button>
+        <button 
+          className="info-button"
+          onClick={() => setIsStatusBarVisible(!isStatusBarVisible)}
+        >
+          INFO
         </button>
       </div>
     </div>

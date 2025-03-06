@@ -2,6 +2,7 @@ import { BaseballState } from '../types/BaseballTypes';
 
 // Initial baseball game state
 export const initialBaseballState: BaseballState = {
+  gameId: -1,
   game: {
     inning: 1,
     isTopInning: true,
