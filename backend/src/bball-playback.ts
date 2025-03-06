@@ -1,14 +1,21 @@
 import express = require('express');
-import {TestRouter} from "./routes/test";
+import cors = require('cors');
+import { TestRouter } from "./routes/test";
+import { GameRouter } from "./routes/game";
+
 const app = express();
-const port = 3000;
+const port = 3001; // Changed to match frontend config
 
-app.get('/', (req, res) => {
-    console.log('Hello World!');
-})
+// Enable CORS
+app.use(cors());
 
+// Parse JSON bodies
+app.use(express.json());
+
+// Routes
+app.use('/api/game', GameRouter);
 app.use('/test', TestRouter);
 
 app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`);
-})
+    console.log(`Baseball Playback API listening at http://localhost:${port}`);
+});

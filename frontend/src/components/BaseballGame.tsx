@@ -26,8 +26,9 @@ function BaseballGame() {
     gameId: getGameIdFromUrl()
   });
 
-  // API endpoint for game state updates
-  const gameEndpoint = `${config.api.baseUrl}${config.api.endpoints.game}`;
+  // API endpoints for game state updates
+  const initGameEndpoint = `${config.api.baseUrl}${config.api.endpoints.initGame}`;
+  const nextPlayEndpoint = `${config.api.baseUrl}${config.api.endpoints.nextPlay}`;
 
   // Create a teams object for convenience
   const teams = {
@@ -69,44 +70,40 @@ function BaseballGame() {
     gameState.home.currentPitcher : 
     gameState.visitors.currentPitcher
 
-  // Function to handle the next play action
-  const handleNextPlay = async () => {
-    // Don't add new entries while typing is in progress
-    if (!isTypingComplete) {
-      console.log("Typing not complete, ignoring next play");
-      return;
-    }
-    
-    try {
-      // Call the API endpoint (to be implemented)
-      const response = await fetch(gameEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ gameState }),
-      });
+  // Reset the game state when the component mounts
+  useEffect(() => {
+    const initializeGame = async () => {
+      try {
+        const response = await fetch(initGameEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ gameId: getGameIdFromUrl() }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to update game state');
-      }
-
-      const updatedState = await response.json();
-      setGameState(updatedState);
-    } catch (error) {
-      console.error('Error updating game state:', error);
-      // For now, just add a log entry to demonstrate functionality
-      const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
-      
-      setGameState(prevState => ({
-        ...prevState,
-        game: {
-          ...prevState.game,
-          log: newLog
+        if (!response.ok) {
+          throw new Error('Failed to initialize game state');
         }
-      }));
-    }
-  };
+
+        const initialState = await response.json();
+        setGameState(initialState);
+        setRenderedEntryCount(0);
+        setIsTypingComplete(false);
+      } catch (error) {
+        console.error('Error initializing game state:', error);
+        // Fallback to initial state if API call fails
+        setGameState(prevState => ({
+          ...initialBaseballState,
+          gameId: getGameIdFromUrl()
+        }));
+        setRenderedEntryCount(0);
+        setIsTypingComplete(false);
+      }
+    };
+
+    initializeGame();
+  }, []);
 
   // State to track typing completion
   const [isTypingComplete, setIsTypingComplete] = useState(true);
@@ -123,19 +120,6 @@ function BaseballGame() {
       gameLogRef.current.scrollTop = gameLogRef.current.scrollHeight;
     }
   };
-
-  // Reset the game state when the component mounts
-  useEffect(() => {
-    // Initialize with initial state but preserve the gameId from URL
-    setGameState(prevState => ({
-      ...initialBaseballState,
-      gameId: getGameIdFromUrl()
-    }));
-    // Start with no entries rendered
-    setRenderedEntryCount(0);
-    // Start with typing NOT complete so first entry can begin
-    setIsTypingComplete(false);
-  }, []);
 
   // Reset typing state when the log changes
   useEffect(() => {
@@ -198,6 +182,58 @@ function BaseballGame() {
       document.removeEventListener('keydown', handleKeyDown as any);
     };
   }, [gameState, isTypingComplete]); // Re-add listener when gameState or typing state changes
+
+  // Function to handle the next play action
+  const handleNextPlay = async () => {
+    // Don't add new entries while typing is in progress
+    if (!isTypingComplete) {
+      console.log("Typing not complete, ignoring next play");
+      return;
+    }
+    
+    try {
+      const response = await fetch(nextPlayEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gameState }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update game state');
+      }
+
+      const updatedState = await response.json();
+      
+      // Clear the log panel by resetting the game state with new log entries
+      setGameState(prevState => ({
+        ...updatedState,
+        game: {
+          ...updatedState.game,
+          log: updatedState.game.log || [], // Ensure log is an array
+        }
+      }));
+      
+      // Reset the rendered entry count to start fresh
+      setRenderedEntryCount(0);
+      setIsTypingComplete(false);
+    } catch (error) {
+      console.error('Error updating game state:', error);
+      // For development/demo purposes, just add a dummy log entry
+      const newLog = [`New play at ${new Date().toLocaleTimeString()}`];
+      
+      setGameState(prevState => ({
+        ...prevState,
+        game: {
+          ...prevState.game,
+          log: newLog
+        }
+      }));
+      setRenderedEntryCount(0);
+      setIsTypingComplete(false);
+    }
+  };
 
   return (
     <div className="game-container">

@@ -2,7 +2,8 @@ interface Config {
   api: {
     baseUrl: string;
     endpoints: {
-      game: string;
+      initGame: string;
+      nextPlay: string;
     };
   };
 }
@@ -26,7 +27,8 @@ const defaultConfig: Config = {
   api: {
     baseUrl: 'http://localhost:3001',
     endpoints: {
-      game: '/api/game',
+      initGame: '/api/game/init',
+      nextPlay: '/api/game/next',
     },
   },
 };
@@ -36,7 +38,8 @@ const productionConfig: Config = {
   api: {
     baseUrl: 'https://prod-api-for-bball-playback.com',
     endpoints: {
-      game: '/api/v1/game',
+      initGame: '/api/v1/game/init',
+      nextPlay: '/api/v1/game/next',
     },
   },
 };
@@ -46,7 +49,8 @@ const testConfig: Config = {
   api: {
     baseUrl: 'http://localhost:3002',
     endpoints: {
-      game: '/api/test/game',
+      initGame: '/api/test/game/init',
+      nextPlay: '/api/test/game/next',
     },
   },
 };
