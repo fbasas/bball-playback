@@ -30,10 +30,10 @@ export interface TeamState {
   id: string;
   displayName: string;
   shortName: string;  
-  currentPitcher: (isTopInning: boolean) => string;
+  currentPitcher: string;
   lineup: Player[];
   stats: TeamStats;
-  currentBatter: (isTopInning: boolean) => string | null;
+  currentBatter: string | null;
 }
 
 // Game state

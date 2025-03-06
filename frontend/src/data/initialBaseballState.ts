@@ -10,7 +10,7 @@ export const initialBaseballState: BaseballState = {
     onSecond: "Mays",
     onThird: "Robinson",
     log: [
-      "The 1927 Yankees are up to bat against the 2024 Dodgers.",
+      "The 2024 Dodgers are up to bat against the 1927 Yankees.",
       "Hamilton hits a hard ground ball to the first baseman.",
       "Mize steps on first for the out.",
     ]
@@ -19,7 +19,7 @@ export const initialBaseballState: BaseballState = {
     id: "1927NYA",
     displayName: "1927 Yankees",
     shortName: "Yankees",
-    currentPitcher: (isTopInning: boolean) => !isTopInning ? "Bob Gibson" : "Mordecai Brown",
+    currentPitcher: "Mordecai Brown",
     lineup: [
         { position: "LF", firstName: "Billy", lastName: "Hamilton" },
         { position: "1B", firstName: "Ed", lastName: "Delahanty" },
@@ -37,13 +37,13 @@ export const initialBaseballState: BaseballState = {
         hits: 0,
         errors: 0
       },
-      currentBatter: (isTopInning: boolean) => isTopInning ? null : "Hamilton"
+      currentBatter: "Hamilton"
     },
     visitors: {
       id: "2024LAD",
       displayName: "2024 Dodgers",
       shortName: "Dodgers",
-      currentPitcher: (isTopInning: boolean) => isTopInning ? "Mordecai Brown" : "Bob Gibson",
+      currentPitcher: "Bob Gibson",
       lineup: [
         { position: "3B", firstName: "Brooks", lastName: "Robinson" },
         { position: "1B", firstName: "Johnny", lastName: "Mize" },
@@ -61,6 +61,6 @@ export const initialBaseballState: BaseballState = {
         hits: 0,
         errors: 0
       },
-      currentBatter: (isTopInning: boolean) => isTopInning ? "Hamilton" : null
+      currentBatter: "Robinson"
     }
 };

@@ -31,8 +31,8 @@ function BaseballGame() {
   
   // Get current batter and pitcher full names
   const currentBatterLastName = isTopInning ? 
-    gameState.visitors.currentBatter(isTopInning) : 
-    gameState.home.currentBatter(isTopInning)
+    gameState.visitors.currentBatter : 
+    gameState.home.currentBatter
     
   // Find the current batter's full information
   const currentBatterTeam = isTopInning ? gameState.visitors : gameState.home
@@ -47,8 +47,8 @@ function BaseballGame() {
 
   // Get the current pitcher's name
   const currentPitcherName = isTopInning ? 
-    gameState.home.currentPitcher(isTopInning) : 
-    gameState.visitors.currentPitcher(isTopInning)
+    gameState.home.currentPitcher : 
+    gameState.visitors.currentPitcher
 
   // Function to handle the next play action
   const handleNextPlay = () => {
@@ -168,21 +168,6 @@ function BaseballGame() {
 
             {/* Teams and scores */}
             <div className="teams-container">
-              <div className={`team-row ${battingTeam.id === teams.home.id ? "batting-team" : ""}`}>
-                <span className="team-name">{teams.home.displayName}</span>
-                <div className="innings-container">
-                  {gameState.home.stats.innings.map((score: number, i: number) => (
-                    <span key={i} className="score">
-                      {score}
-                    </span>
-                  ))}
-                </div>
-                <div className="stats-container">
-                  <span className="score">{gameState.home.stats.runs}</span>
-                  <span className="score">{gameState.home.stats.hits}</span>
-                  <span className="score">{gameState.home.stats.errors}</span>
-                </div>
-              </div>
               <div className={`team-row ${battingTeam.id === teams.away.id ? "batting-team" : ""}`}>
                 <span className="team-name">{teams.away.displayName}</span>
                 <div className="innings-container">
@@ -196,6 +181,21 @@ function BaseballGame() {
                   <span className="score">{gameState.visitors.stats.runs}</span>
                   <span className="score">{gameState.visitors.stats.hits}</span>
                   <span className="score">{gameState.visitors.stats.errors}</span>
+                </div>
+              </div>
+              <div className={`team-row ${battingTeam.id === teams.home.id ? "batting-team" : ""}`}>
+                <span className="team-name">{teams.home.displayName}</span>
+                <div className="innings-container">
+                  {gameState.home.stats.innings.map((score: number, i: number) => (
+                    <span key={i} className="score">
+                      {score}
+                    </span>
+                  ))}
+                </div>
+                <div className="stats-container">
+                  <span className="score">{gameState.home.stats.runs}</span>
+                  <span className="score">{gameState.home.stats.hits}</span>
+                  <span className="score">{gameState.home.stats.errors}</span>
                 </div>
               </div>
             </div>
@@ -243,7 +243,7 @@ function BaseballGame() {
                   {gameState.home.lineup.map((player: Player, index: number) => (
                     <div 
                       key={index} 
-                      className={`player-row ${currentBatterLastName === player.lastName ? "current-batter" : ""}`}
+                      className={`player-row ${!isTopInning && currentBatterLastName === player.lastName ? "current-batter" : ""}`}
                     >
                       <span className="position">{player.position}</span>
                       <span className="player-name">{player.lastName}</span>
@@ -257,7 +257,7 @@ function BaseballGame() {
                   {gameState.visitors.lineup.map((player: Player, index: number) => (
                     <div 
                       key={index}
-                      className={`player-row ${currentBatterLastName === player.lastName ? "current-batter" : ""}`}
+                      className={`player-row ${isTopInning && currentBatterLastName === player.lastName ? "current-batter" : ""}`}
                     >
                       <span className="position">{player.position}</span>
                       <span className="player-name">{player.lastName}</span>
