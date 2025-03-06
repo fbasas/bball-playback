@@ -1,0 +1,135 @@
+/* Scoreboard (Red background) */
+.scoreboard {
+  flex: 0.675;
+  margin-right: 4px;
+  background-color: #990000;
+  border: 2px solid #00ff00;
+  padding: 8px;
+  color: #ffff00;
+}
+
+/* Innings row */
+.innings-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ffff00;
+  padding-bottom: 4px;
+}
+
+.team-name-spacer {
+  width: 160px;
+  margin-right: 10px;
+}
+
+.innings-container {
+  flex: 0.7;
+  display: flex;
+  justify-content: space-evenly;
+  padding-right: 35px;
+  margin-right: 35px;
+}
+
+/* Make sure team row innings containers match the header */
+.team-row .innings-container {
+  flex: 0.7;
+  justify-content: space-evenly;
+  padding-right: 35px;
+  margin-right: 35px;
+}
+
+.stats-container {
+  width: 100px;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.inning-number,
+.stat-label {
+  width: 20px;
+  text-align: center;
+  color: #ffff00;
+}
+
+.inning-number {
+  margin: 0 5px;
+}
+
+.stat-label {
+  margin: 0 5px;
+}
+
+/* Teams and scores */
+.teams-container {
+  margin-bottom: 4px;
+}
+
+.team-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.team-name {
+  width: 160px;
+  font-weight: bold;
+  color: #ffff00;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.score {
+  width: 20px;
+  text-align: center;
+  color: #fff;
+  margin: 0 5px;
+}
+
+/* Game info */
+.game-info {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.pitching-info {
+  margin-bottom: 16px;
+}
+
+.label {
+  color: #ffff00;
+}
+
+.value {
+  color: #ccc;
+}
+
+.base-runners-info {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #ffff00;
+}
+
+.base-runner-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.base-runner-row .label {
+  width: 40px;
+  text-align: right;
+  margin-right: 8px;
+}
+
+.base-runner-row .value {
+  flex: 1;
+  text-align: left;
+}
+
+.out-indicator {
+  float: right;
+  color: #ffff00;
+} 
