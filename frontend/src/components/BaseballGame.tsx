@@ -216,6 +216,21 @@ function BaseballGame() {
                 <span className="label">Out: </span>
                 <span className="value">{gameState.game.outs}</span>
               </div>
+
+              <div className="base-runners-info">
+                <div className="base-runner-row">
+                  <span className="label">1st: </span>
+                  <span className="value">{gameState.game.onFirst || "Empty"}</span>
+                </div>
+                <div className="base-runner-row">
+                  <span className="label">2nd: </span>
+                  <span className="value">{gameState.game.onSecond || "Empty"}</span>
+                </div>
+                <div className="base-runner-row">
+                  <span className="label">3rd: </span>
+                  <span className="value">{gameState.game.onThird || "Empty"}</span>
+                </div>
+              </div>
             </div>
           </div>
 

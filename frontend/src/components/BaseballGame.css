@@ -148,6 +148,30 @@ body {
   .value {
     color: #ccc;
   }
+
+  .base-runners-info {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #ffff00;
+  }
+
+  .base-runner-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .base-runner-row .label {
+    width: 40px;
+    text-align: right;
+    margin-right: 8px;
+  }
+
+  .base-runner-row .value {
+    flex: 1;
+    text-align: left;
+  }
   
   .out-indicator {
     float: right;
