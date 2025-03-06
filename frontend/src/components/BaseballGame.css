@@ -39,52 +39,6 @@ body {
     margin-bottom: 4px;
   }
   
-  /* Lineup panel (Blue background) */
-  .lineup-panel {
-    width: 468px;
-    background-color: #000099;
-    border: 2px solid #00ff00;
-    padding: 8px;
-    color: #fff;
-    flex: 0.625;
-  }
-  
-  .lineup-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-  }
-  
-  .team-column {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .lineup-team-name {
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 8px;
-  }
-  
-  .player-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .player-row {
-    display: flex;
-  }
-  
-  .position {
-    width: 40px;
-  }
-  
-  .current-batter {
-    background-color: #ffff00;
-    color: #000099;
-  }
-  
   /* Bottom section with game log */
   .bottom-section {
     display: flex;

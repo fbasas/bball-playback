@@ -6,6 +6,7 @@ import { getFullName, BaseballState, Player } from "../types/BaseballTypes"
 import { initialBaseballState } from "../data/initialBaseballState"
 import TypedText from "./TypedText"
 import Scoreboard from "./Scoreboard"
+import LineupPanel from "./LineupPanel"
 
 function BaseballGame() {
   // Combined game state object suitable for REST API
@@ -155,38 +156,12 @@ function BaseballGame() {
           />
 
           {/* Right panel - Team Lineups (Blue background) */}
-          <div className="lineup-panel">
-            <div className="lineup-grid">
-              <div className="team-column">
-                <div className="lineup-team-name">{teams.home.shortName}</div>
-                <div className="player-list">
-                  {gameState.home.lineup.map((player: Player, index: number) => (
-                    <div 
-                      key={index} 
-                      className={`player-row ${!isTopInning && currentBatterLastName === player.lastName ? "current-batter" : ""}`}
-                    >
-                      <span className="position">{player.position}</span>
-                      <span className="player-name">{player.lastName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="team-column">
-                <div className="lineup-team-name">{teams.away.shortName}</div>
-                <div className="player-list">
-                  {gameState.visitors.lineup.map((player: Player, index: number) => (
-                    <div 
-                      key={index}
-                      className={`player-row ${isTopInning && currentBatterLastName === player.lastName ? "current-batter" : ""}`}
-                    >
-                      <span className="position">{player.position}</span>
-                      <span className="player-name">{player.lastName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <LineupPanel
+            teams={teams}
+            gameState={gameState}
+            isTopInning={isTopInning}
+            currentBatterLastName={currentBatterLastName}
+          />
         </div>
 
         {/* Bottom section - Game Log */}
