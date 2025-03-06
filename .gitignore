@@ -4,3 +4,5 @@ backend/.idea
 .idea
 frontend/node_modules
 node_modules
+frontend/.env.example
+.vscode
