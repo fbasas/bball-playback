@@ -2,8 +2,8 @@
 
 import { useState, useEffect, KeyboardEvent, useRef } from "react"
 import "./BaseballGame.css"
-import { getFullName, BaseballState, Player } from "../types/BaseballTypes"
-import { initialBaseballState } from "../data/initialBaseballState"
+import { getFullName, BaseballState, Player } from "../../../common/types/BaseballTypes"
+import { initialBaseballState } from "../../../common/data/initialBaseballState"
 import { config } from "../config/config"
 import TypedText from "./TypedText"
 import Scoreboard from "./Scoreboard"
