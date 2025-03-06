@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, KeyboardEvent } from "react"
+import { useState, useEffect, KeyboardEvent, useRef } from "react"
 import "./BaseballGame.css"
 import { getFullName, BaseballState, Player } from "../types/BaseballTypes"
 import { initialBaseballState } from "../data/initialBaseballState"
+import { config } from "../config/config"
 import TypedText from "./TypedText"
 import Scoreboard from "./Scoreboard"
 import LineupPanel from "./LineupPanel"
@@ -11,6 +12,9 @@ import LineupPanel from "./LineupPanel"
 function BaseballGame() {
   // Combined game state object suitable for REST API
   const [gameState, setGameState] = useState<BaseballState>(initialBaseballState);
+
+  // API endpoint for game state updates
+  const gameEndpoint = `${config.api.baseUrl}${config.api.endpoints.game}`;
 
   // Create a teams object for convenience
   const teams = {
@@ -53,24 +57,42 @@ function BaseballGame() {
     gameState.visitors.currentPitcher
 
   // Function to handle the next play action
-  const handleNextPlay = () => {
+  const handleNextPlay = async () => {
     // Don't add new entries while typing is in progress
     if (!isTypingComplete) {
       console.log("Typing not complete, ignoring next play");
       return;
     }
     
-    console.log("Adding new log entry");
-    // For now, just add a log entry to demonstrate functionality
-    const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
-    
-    setGameState(prevState => ({
-      ...prevState,
-      game: {
-        ...prevState.game,
-        log: newLog
+    try {
+      // Call the API endpoint (to be implemented)
+      const response = await fetch(gameEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gameState }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update game state');
       }
-    }));
+
+      const updatedState = await response.json();
+      setGameState(updatedState);
+    } catch (error) {
+      console.error('Error updating game state:', error);
+      // For now, just add a log entry to demonstrate functionality
+      const newLog = [...gameState.game.log, `New play at ${new Date().toLocaleTimeString()}`];
+      
+      setGameState(prevState => ({
+        ...prevState,
+        game: {
+          ...prevState.game,
+          log: newLog
+        }
+      }));
+    }
   };
 
   // State to track typing completion
@@ -79,6 +101,16 @@ function BaseballGame() {
   // State to track how many log entries have been rendered
   const [renderedEntryCount, setRenderedEntryCount] = useState(0);
   
+  // Reference to the game log container
+  const gameLogRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to bottom of game log
+  const scrollToBottom = () => {
+    if (gameLogRef.current) {
+      gameLogRef.current.scrollTop = gameLogRef.current.scrollHeight;
+    }
+  };
+
   // Reset the game state when the component mounts
   useEffect(() => {
     // Initialize with initial state
@@ -109,6 +141,9 @@ function BaseballGame() {
   const handleEntryTypingComplete = () => {
     console.log("Entry typing complete, renderedEntryCount:", renderedEntryCount, "log length:", gameState.game.log.length);
     
+    // Scroll to bottom after typing is complete
+    scrollToBottom();
+    
     // If there are more entries to show, increment the rendered count and keep typing not complete
     if (renderedEntryCount < gameState.game.log.length) {
       console.log("Moving to next entry");
@@ -120,6 +155,16 @@ function BaseballGame() {
       setIsTypingComplete(true);
     }
   };
+
+  // Scroll to bottom when component mounts
+  useEffect(() => {
+    scrollToBottom();
+  }, []);
+
+  // Scroll to bottom when new entries are added
+  useEffect(() => {
+    scrollToBottom();
+  }, [gameState.game.log.length]);
 
   // Add keyboard event listener for Enter key
   useEffect(() => {
@@ -166,7 +211,7 @@ function BaseballGame() {
 
         {/* Bottom section - Game Log */}
         <div className="bottom-section">
-          <div className="game-log">
+          <div className="game-log" ref={gameLogRef}>
             {renderedEntryCount > 0 && gameState.game.log.length > 0 && (
               <TypedText 
                 text={gameState.game.log[renderedEntryCount - 1]} 
