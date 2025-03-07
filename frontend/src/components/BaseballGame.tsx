@@ -29,6 +29,7 @@ function BaseballGame() {
   // API endpoints for game state updates
   const initGameEndpoint = `${config.api.baseUrl}${config.api.endpoints.initGame}`;
   const nextPlayEndpoint = `${config.api.baseUrl}${config.api.endpoints.nextPlay}`;
+  const gameId = getGameIdFromUrl();
 
   // Create a teams object for convenience
   const teams = {
@@ -74,12 +75,11 @@ function BaseballGame() {
   useEffect(() => {
     const initializeGame = async () => {
       try {
-        const response = await fetch(initGameEndpoint, {
-          method: 'POST',
+        const response = await fetch(`${initGameEndpoint}/${gameId}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ gameId: getGameIdFromUrl() }),
+          }
         });
 
         if (!response.ok) {
@@ -95,7 +95,7 @@ function BaseballGame() {
         // Fallback to initial state if API call fails
         setGameState(prevState => ({
           ...initialBaseballState,
-          gameId: getGameIdFromUrl()
+          gameId: gameId
         }));
         setRenderedEntryCount(0);
         setIsTypingComplete(false);
@@ -192,12 +192,11 @@ function BaseballGame() {
     }
     
     try {
-      const response = await fetch(nextPlayEndpoint, {
-        method: 'POST',
+      const response = await fetch(`${nextPlayEndpoint}/${gameId}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ gameState }),
+        }
       });
 
       if (!response.ok) {
