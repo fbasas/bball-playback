@@ -3,6 +3,7 @@ import { BaseballState } from '../../../common/types/BaseballTypes';
 import { initialBaseballState } from '../../../common/data/initialBaseballState';
 import { db } from '../config/database';
 import { generateCompletion } from '../services/openai';
+import { generateInitGamePrompt, generateNextPlayPrompt } from '../services/promptTemplates';
 
 interface CreateGameRequest {
     homeTeamId: string;
@@ -66,9 +67,11 @@ const initGame: RequestHandler = async (req, res) => {
             return;
         }
 
-        // Create a prompt using a dummy template for now
-        const prompt = `This is a dummy prompt template for the first play of game ${gameId}. 
-        Play details: ${JSON.stringify(firstPlay)}`;
+        // Create a prompt using our template
+        const prompt = generateInitGamePrompt({
+            ...initialBaseballState,
+            gameId: parseInt(gameId)
+        }, firstPlay);
 
         try {
             // Send the prompt to OpenAI
@@ -123,9 +126,15 @@ const getNextPlay: RequestHandler = async (req, res) => {
             return;
         }
 
-        // Create a prompt using a dummy template for now
-        const prompt = `This is a dummy prompt template for the next play of game ${gameId} after play index ${lastPlayIndex}. 
-        Play details: ${JSON.stringify(nextPlay)}`;
+        // Get current game state (in a real app, you'd retrieve this from a database)
+        // For now, we'll use a modified version of the initial state
+        const currentState: BaseballState = {
+            ...initialBaseballState,
+            gameId: parseInt(gameId)
+        };
+
+        // Create a prompt using our template
+        const prompt = generateNextPlayPrompt(currentState, nextPlay, lastPlayIndex);
 
         try {
             // Send the prompt to OpenAI
