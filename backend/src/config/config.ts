@@ -6,9 +6,15 @@ interface DatabaseConfig {
     password: string;
 }
 
+interface OpenAIConfig {
+    apiKey: string;
+    model: string;
+}
+
 interface Config {
     database: DatabaseConfig;
     port: number;
+    openai: OpenAIConfig;
 }
 
 // Configuration for different environments
@@ -21,7 +27,11 @@ const configs: Record<string, Config> = {
             user: process.env.DB_USER || 'username',
             password: process.env.DB_PASSWORD || 'password'
         },
-        port: parseInt(process.env.PORT || '3001')
+        port: parseInt(process.env.PORT || '3001'),
+        openai: {
+            apiKey: process.env.OPENAI_API_KEY || '',
+            model: process.env.OPENAI_MODEL || ''
+        }
     },
     production: {
         database: {
@@ -31,7 +41,11 @@ const configs: Record<string, Config> = {
             user: process.env.DB_USER || 'username',
             password: process.env.DB_PASSWORD || 'password'
         },
-        port: parseInt(process.env.PORT || '3001')
+        port: parseInt(process.env.PORT || '3001'),
+        openai: {
+            apiKey: process.env.OPENAI_API_KEY || '',
+            model: process.env.OPENAI_MODEL || ''
+        }
     },
     test: {
         database: {
@@ -41,7 +55,11 @@ const configs: Record<string, Config> = {
             user: process.env.TEST_DB_USER || 'username',
             password: process.env.TEST_DB_PASSWORD || 'password'
         },
-        port: parseInt(process.env.TEST_PORT || '3001')
+        port: parseInt(process.env.TEST_PORT || '3001'),
+        openai: {
+            apiKey: process.env.OPENAI_API_KEY || '',
+            model: process.env.OPENAI_MODEL || ''
+        }
     }
 };
 

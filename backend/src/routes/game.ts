@@ -2,6 +2,7 @@ import express, { Router, Request, Response, RequestHandler } from 'express';
 import { BaseballState } from '../../../common/types/BaseballTypes';
 import { initialBaseballState } from '../../../common/data/initialBaseballState';
 import { db } from '../config/database';
+import { generateCompletion } from '../services/openai';
 
 interface CreateGameRequest {
     homeTeamId: string;
@@ -45,17 +46,49 @@ const createGame: RequestHandler = (req, res) => {
 };
 
 // Initialize game state
-const initGame: RequestHandler = (req, res) => {
-    const gameId = parseInt(req.params.gameId);
+const initGame: RequestHandler = async (req, res) => {
+    const gameId = req.params.gameId;
     
+    if (!gameId) {
+        res.status(400).json({ error: 'Game ID is required' });
+        return;
+    }
+
     try {
-        // For now, return the initial state with the provided gameId
-        const gameState: BaseballState = {
-            ...initialBaseballState,
-            gameId: gameId
-        };
+        // Query the plays table for the first play (lowest 'pn' value) for this game
+        const firstPlay = await db('plays')
+            .where({ gid: gameId })
+            .orderBy('pn', 'asc')
+            .first();
         
-        res.json(gameState);
+        if (!firstPlay) {
+            res.status(404).json({ error: 'No plays found for the specified game ID' });
+            return;
+        }
+
+        // Create a prompt using a dummy template for now
+        const prompt = `This is a dummy prompt template for the first play of game ${gameId}. 
+        Play details: ${JSON.stringify(firstPlay)}`;
+
+        try {
+            // Send the prompt to OpenAI
+            const completionText = await generateCompletion(prompt);
+
+            // Return a modified version of the initial state
+            const gameState: BaseballState = {
+                ...initialBaseballState,
+                gameId: parseInt(gameId),
+                game: {
+                    ...initialBaseballState.game,
+                    log: [completionText]
+                }
+            };
+            
+            res.json(gameState);
+        } catch (error) {
+            console.error('Error generating completion:', error);
+            res.status(500).json({ error: 'Failed to generate completion' });
+        }
     } catch (error) {
         console.error('Error initializing game:', error);
         res.status(500).json({ error: 'Failed to initialize game' });
@@ -63,21 +96,56 @@ const initGame: RequestHandler = (req, res) => {
 };
 
 // Get next play
-const getNextPlay: RequestHandler = (req, res) => {
-    const gameId = parseInt(req.params.gameId);
+const getNextPlay: RequestHandler = async (req, res) => {
+    const gameId = req.params.gameId;
+    const lastPlayIndex = parseInt(req.query.lastPlayIndex as string);
     
+    if (!gameId) {
+        res.status(400).json({ error: 'Game ID is required' });
+        return;
+    }
+
+    if (isNaN(lastPlayIndex)) {
+        res.status(400).json({ error: 'Last play index is required and must be a number' });
+        return;
+    }
+
     try {
-        // For now, just return a modified version of the current state
-        const updatedState: BaseballState = {
-            ...initialBaseballState,
-            gameId: gameId,
-            game: {
-                ...initialBaseballState.game,
-                log: ['Next play generated at ' + new Date().toLocaleTimeString()]
-            }
-        };
+        // Query the plays table for the next play (next highest 'pn' value) for this game
+        const nextPlay = await db('plays')
+            .where({ gid: gameId })
+            .where('pn', '>', lastPlayIndex)
+            .orderBy('pn', 'asc')
+            .first();
         
-        res.json(updatedState);
+        if (!nextPlay) {
+            res.status(404).json({ error: 'No more plays found for the specified game ID' });
+            return;
+        }
+
+        // Create a prompt using a dummy template for now
+        const prompt = `This is a dummy prompt template for the next play of game ${gameId} after play index ${lastPlayIndex}. 
+        Play details: ${JSON.stringify(nextPlay)}`;
+
+        try {
+            // Send the prompt to OpenAI
+            const completionText = await generateCompletion(prompt);
+
+            // Return a modified version of the current state
+            const updatedState: BaseballState = {
+                ...initialBaseballState,
+                gameId: parseInt(gameId),
+                game: {
+                    ...initialBaseballState.game,
+                    log: [completionText]
+                }
+            };
+            
+            res.json(updatedState);
+        } catch (error) {
+            console.error('Error generating completion:', error);
+            res.status(500).json({ error: 'Failed to generate completion' });
+        }
     } catch (error) {
         console.error('Error generating next play:', error);
         res.status(500).json({ error: 'Failed to generate next play' });
