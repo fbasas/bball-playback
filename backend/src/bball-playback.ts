@@ -4,7 +4,7 @@ import { TestRouter } from "./routes/test";
 import { GameRouter } from "./routes/game";
 
 const app = express();
-const port = 3001; // Changed to match frontend config
+const port = parseInt(process.env.PORT || '3001'); // Use PORT from .env or default to 3001
 
 // Enable CORS
 app.use(cors());
