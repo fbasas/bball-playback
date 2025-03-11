@@ -10,3 +10,9 @@ frontend/.env.example
 backend/.env.example
 common/.env.example
 .vscode
+externaldata
+.dbclient
+.env
+frontend/.env
+backend/.env
+common/.env
