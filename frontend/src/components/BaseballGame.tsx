@@ -13,8 +13,7 @@ function BaseballGame() {
   // Get gameId from URL parameters
   const getGameIdFromUrl = () => {
     const params = new URLSearchParams(window.location.search);
-    const gameId = parseInt(params.get('gameId') || '-1');
-    return isNaN(gameId) ? -1 : gameId;
+    return params.get('gameId') || '-1';
   };
 
   // Status bar visibility state
@@ -308,4 +307,3 @@ function BaseballGame() {
 }
 
 export default BaseballGame;
-

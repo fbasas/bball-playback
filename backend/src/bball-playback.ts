@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import express = require('express');
 import cors = require('cors');
 import { TestRouter } from "./routes/test";

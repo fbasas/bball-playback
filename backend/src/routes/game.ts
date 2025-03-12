@@ -23,7 +23,7 @@ const createGame: RequestHandler = (req, res) => {
 
     try {
         // Generate a unique game ID (for now, using timestamp)
-        const gameId = Date.now();
+        const gameId = Date.now().toString();
         
         // Create initial game state with the provided team IDs
         const gameState: BaseballState = {
@@ -70,7 +70,7 @@ const initGame: RequestHandler = async (req, res) => {
         // Create a prompt using our template
         const prompt = generateInitGamePrompt({
             ...initialBaseballState,
-            gameId: parseInt(gameId)
+            gameId: gameId
         }, firstPlay);
 
         try {
@@ -80,7 +80,7 @@ const initGame: RequestHandler = async (req, res) => {
             // Return a modified version of the initial state
             const gameState: BaseballState = {
                 ...initialBaseballState,
-                gameId: parseInt(gameId),
+                gameId: gameId,
                 game: {
                     ...initialBaseballState.game,
                     log: [completionText]
@@ -130,7 +130,7 @@ const getNextPlay: RequestHandler = async (req, res) => {
         // For now, we'll use a modified version of the initial state
         const currentState: BaseballState = {
             ...initialBaseballState,
-            gameId: parseInt(gameId)
+            gameId: gameId
         };
 
         // Create a prompt using our template
@@ -143,7 +143,7 @@ const getNextPlay: RequestHandler = async (req, res) => {
             // Return a modified version of the current state
             const updatedState: BaseballState = {
                 ...initialBaseballState,
-                gameId: parseInt(gameId),
+                gameId: gameId,
                 game: {
                     ...initialBaseballState.game,
                     log: [completionText]

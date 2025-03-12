@@ -49,7 +49,7 @@ export interface GameState {
 
 // Complete baseball state
 export interface BaseballState {
-  gameId: number;
+  gameId: string;
   game: GameState;
   home: TeamState;
   visitors: TeamState;
@@ -57,4 +57,4 @@ export interface BaseballState {
 
 // Helper function to get full name
 export const getFullName = (firstName: string, lastName: string): string => 
-  `${firstName} ${lastName}`; 
+  `${firstName} ${lastName}`;
