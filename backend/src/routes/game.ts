@@ -74,8 +74,8 @@ const initGame: RequestHandler = async (req, res) => {
         }, firstPlay);
 
         try {
-            // Send the prompt to OpenAI
-            const completionText = await generateCompletion(prompt);
+            // Send the prompt to OpenAI with game ID
+            const completionText = await generateCompletion(prompt, gameId);
 
             // Return a modified version of the initial state
             const gameState: BaseballState = {
@@ -137,8 +137,8 @@ const getNextPlay: RequestHandler = async (req, res) => {
         const prompt = generateNextPlayPrompt(currentState, nextPlay, lastPlayIndex);
 
         try {
-            // Send the prompt to OpenAI
-            const completionText = await generateCompletion(prompt);
+            // Send the prompt to OpenAI with game ID
+            const completionText = await generateCompletion(prompt, gameId);
 
             // Return a modified version of the current state
             const updatedState: BaseballState = {
