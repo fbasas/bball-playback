@@ -67,15 +67,22 @@ const initGame: RequestHandler = async (req, res) => {
             return;
         }
 
-        // Create a prompt using our template
-        const prompt = generateInitGamePrompt({
-            ...initialBaseballState,
-            gameId: gameId
-        }, firstPlay);
-
         try {
+            // Create a prompt using our template
+            const prompt = await generateInitGamePrompt({
+                ...initialBaseballState,
+                gameId: gameId
+            });
+
             // Send the prompt to OpenAI with game ID
             const completionText = await generateCompletion(prompt, gameId);
+
+            // Split the completion text by sentence endings to create an array of log entries
+            const logEntries = completionText
+                .replace(/([.!?])\s+/g, '$1\n') // Add newlines after sentence endings
+                .split('\n')
+                .filter(line => line.trim() !== '') // Remove empty lines
+                .map(line => line.trim());          // Trim whitespace
 
             // Return a modified version of the initial state
             const gameState: BaseballState = {
@@ -83,7 +90,7 @@ const initGame: RequestHandler = async (req, res) => {
                 gameId: gameId,
                 game: {
                     ...initialBaseballState.game,
-                    log: [completionText]
+                    log: logEntries
                 }
             };
             
@@ -140,13 +147,20 @@ const getNextPlay: RequestHandler = async (req, res) => {
             // Send the prompt to OpenAI with game ID
             const completionText = await generateCompletion(prompt, gameId);
 
+            // Split the completion text by sentence endings to create an array of log entries
+            const logEntries = completionText
+                .replace(/([.!?])\s+/g, '$1\n') // Add newlines after sentence endings
+                .split('\n')
+                .filter(line => line.trim() !== '') // Remove empty lines
+                .map(line => line.trim());          // Trim whitespace
+
             // Return a modified version of the current state
             const updatedState: BaseballState = {
                 ...initialBaseballState,
                 gameId: gameId,
                 game: {
                     ...initialBaseballState.game,
-                    log: [completionText]
+                    log: logEntries
                 }
             };
             

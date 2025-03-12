@@ -22,7 +22,7 @@ async function saveCompletionToDb(
     // Determine if this is a chat completion or regular completion
     const isChatCompletion = response.choices?.[0]?.message !== undefined;
     
-    await db('openai_completions').insert({
+    await db('openai_completions_log').insert({
       prompt,
       model: response.model,
       temperature: 0.7, // Using default from our code
