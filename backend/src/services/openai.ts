@@ -25,8 +25,8 @@ async function saveCompletionToDb(
     await db('openai_completions_log').insert({
       prompt,
       model: response.model,
-      temperature: 0.7, // Using default from our code
-      max_tokens: 500, // Using default from our code
+      temperature: config.openai.temperature,
+      max_tokens: config.openai.maxTokens,
       
       completion_id: response.id,
       content: isChatCompletion ? response.choices[0].message.content : response.choices[0].text,
@@ -85,8 +85,8 @@ export async function generateCompletion(
             content: prompt
           }
         ],
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: config.openai.maxTokens,
+        temperature: config.openai.temperature,
       });
 
       const latencyMs = Math.round(performance.now() - startTime);
@@ -106,8 +106,8 @@ export async function generateCompletion(
       response = await openai.completions.create({
         model: config.openai.model,
         prompt,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: config.openai.maxTokens,
+        temperature: config.openai.temperature,
       });
 
       const latencyMs = Math.round(performance.now() - startTime);

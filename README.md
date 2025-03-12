@@ -100,6 +100,7 @@ The backend provides the following API endpoints:
 - `GET /api/game/init/:gameId`: Initializes a game with the specified ID
 - `GET /api/game/next/:gameId`: Retrieves the next play for the specified game
 - `GET /api/game/info/:gid`: Retrieves game information from the plays table
+- `GET /api/game/announceLineups/:gameId`: Announces the starting lineups for a game
 
 ### Services
 
@@ -110,13 +111,20 @@ The backend integrates with OpenAI's API to generate play-by-play commentary. Th
 - Sends prompts to OpenAI's API
 - Processes and formats the responses
 - Logs completions to the database
+- Uses configurable parameters for token limits and temperature
 
-#### Prompt Templates (`backend/src/services/promptTemplates.ts`)
+The OpenAI integration is configured with the following parameters:
+- `model`: The OpenAI model to use (e.g., gpt-4, gpt-3.5-turbo)
+- `maxTokens`: Maximum number of tokens to generate (default: 1000)
+- `temperature`: Controls randomness in the output (default: 0.7)
 
-The backend uses Handlebars templates to generate prompts for OpenAI:
+#### Prompt Templates (`backend/src/services/prompts/`)
 
-- `initGameTemplate`: Template for initializing a game
-- `nextPlayTemplate`: Template for generating the next play
+The backend uses Handlebars templates to generate prompts for OpenAI. Each prompt is organized in its own file:
+
+- `initGame.ts`: Template and function for initializing a game
+- `nextPlay.ts`: Template and function for generating the next play
+- `lineupAnnouncement.ts`: Template and function for announcing lineups
 
 ### Database Schema
 
@@ -170,7 +178,11 @@ The database also includes tables from the Retrosheet database:
 The backend configuration is managed in `backend/src/config/config.ts` and supports different environments (development, production, test). The configuration includes:
 
 - Database connection details
-- OpenAI API settings
+- OpenAI API settings:
+  - `apiKey`: API key for OpenAI
+  - `model`: Model to use for completions
+  - `maxTokens`: Maximum tokens to generate (configurable via `OPENAI_MAX_TOKENS` env var)
+  - `temperature`: Controls randomness (configurable via `OPENAI_TEMPERATURE` env var)
 - Server port
 
 ## Common Types and Shared Data
@@ -202,12 +214,16 @@ The application includes a default initial state for new games, which includes:
    npm run dev
    ```
 
+   Alternatively, you can use the VSCode debug configuration "Debug Backend" which uses nodemon for automatic server restarts during development.
+
 2. **Frontend**:
    ```
    cd frontend
    npm install
    npm run dev
    ```
+
+   Alternatively, you can use the VSCode debug configuration "Debug Frontend" which launches the Vite development server.
 
 ### Adding New Features
 

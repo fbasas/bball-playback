@@ -9,6 +9,8 @@ interface DatabaseConfig {
 interface OpenAIConfig {
     apiKey: string;
     model: string;
+    maxTokens: number;
+    temperature: number;
 }
 
 interface Config {
@@ -30,7 +32,9 @@ const configs: Record<string, Config> = {
         port: parseInt(process.env.PORT || '3001'),
         openai: {
             apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || ''
+            model: process.env.OPENAI_MODEL || '',
+            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
+            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
         }
     },
     production: {
@@ -44,7 +48,9 @@ const configs: Record<string, Config> = {
         port: parseInt(process.env.PORT || '3001'),
         openai: {
             apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || ''
+            model: process.env.OPENAI_MODEL || '',
+            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
+            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
         }
     },
     test: {
@@ -58,7 +64,9 @@ const configs: Record<string, Config> = {
         port: parseInt(process.env.TEST_PORT || '3001'),
         openai: {
             apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || ''
+            model: process.env.OPENAI_MODEL || '',
+            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
+            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
         }
     }
 };
