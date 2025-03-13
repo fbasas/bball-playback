@@ -53,6 +53,8 @@ export interface BaseballState {
   game: GameState;
   home: TeamState;
   visitors: TeamState;
+  currentPlay: number; // Current play index
+  gameType: 'replay' | 'simulation'; // Type of game (replay of historical game or simulation)
 }
 
 // Helper function to get full name
@@ -98,5 +100,7 @@ export const createEmptyBaseballState = (): BaseballState => ({
       errors: 0
     },
     currentBatter: null
-  }
+  },
+  currentPlay: -1, // Default to -1 (no plays yet, so next play will be index 0)
+  gameType: 'replay' // Default to replay mode
 });

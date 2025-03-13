@@ -18,8 +18,8 @@ Game state: {{inningDisplay inning}} inning, {{#if isTopInning}}top{{else}}botto
 
 {{batterTeam}} batting with {{batter.firstName}} {{batter.lastName}} at the plate against {{pitcher.firstName}} {{pitcher.lastName}}.
 
-Previous play: {{lastPlayIndex}}
-Current play details:
+Current play: {{currentPlay}}
+Next play details:
 {{playDetails}}
 
 Describe this play in a natural, engaging baseball announcer style. Include relevant details about the current game situation, the players involved, and the outcome of the play.
@@ -29,7 +29,7 @@ Describe this play in a natural, engaging baseball announcer style. Include rele
 export function generateNextPlayPrompt(
   gameState: BaseballState, 
   nextPlay: any, 
-  lastPlayIndex: number
+  currentPlay: number
 ): string {
   // Determine current batter and pitcher
   const isTopInning = gameState.game.isTopInning;
@@ -65,7 +65,7 @@ export function generateNextPlayPrompt(
     pitcherTeam,
     batter,
     pitcher,
-    lastPlayIndex,
+    currentPlay,
     playDetails: JSON.stringify(nextPlay, null, 2)
   });
 }

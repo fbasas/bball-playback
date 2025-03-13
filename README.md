@@ -98,7 +98,7 @@ The backend provides the following API endpoints:
 
 - `POST /api/game/createGame`: Creates a new game with specified home and visiting teams
 - `GET /api/game/init/:gameId`: Initializes a game with the specified ID
-- `GET /api/game/next/:gameId`: Retrieves the next play for the specified game
+- `GET /api/game/next/:gameId?currentPlay=<playId>`: Retrieves the next play for the specified game after the current play ID
 - `GET /api/game/info/:gid`: Retrieves game information from the plays table
 - `GET /api/game/announceLineups/:gameId`: Announces the starting lineups for a game with AI-generated commentary
 
@@ -211,8 +211,14 @@ The backend configuration is managed in `backend/src/config/config.ts` and suppo
 
 The application uses shared TypeScript interfaces to ensure type consistency between frontend and backend:
 
-- `BaseballState`: The main state object that includes game state, home team, and visiting team
-- `GameState`: Information about the current game situation
+- `BaseballState`: The main state object that includes:
+  - `gameId`: Unique identifier for the game
+  - `game`: Current game state information
+  - `home`: Home team state
+  - `visitors`: Visiting team state
+  - `currentPlay`: Current play index being displayed
+  - `gameType`: Type of game ('replay' or 'simulation')
+- `GameState`: Information about the current game situation (inning, outs, runners, etc.)
 - `TeamState`: Information about a team, including lineup and stats
 - `Player`: Information about a player, including position and name
 

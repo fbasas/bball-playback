@@ -6,15 +6,15 @@ import { generateNextPlayPrompt } from '../../services/prompts';
 
 export const getNextPlay: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
-    const lastPlayIndex = parseInt(req.query.lastPlayIndex as string);
+    const currentPlay = parseInt(req.query.currentPlay as string);
     
     if (!gameId) {
         res.status(400).json({ error: 'Game ID is required' });
         return;
     }
 
-    if (isNaN(lastPlayIndex)) {
-        res.status(400).json({ error: 'Last play index is required and must be a number' });
+    if (isNaN(currentPlay)) {
+        res.status(400).json({ error: 'Current play index is required and must be a number' });
         return;
     }
 
@@ -22,7 +22,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         // Query the plays table for the next play (next highest 'pn' value) for this game
         const nextPlay = await db('plays')
             .where({ gid: gameId })
-            .where('pn', '>', lastPlayIndex)
+            .where('pn', '>', currentPlay)
             .orderBy('pn', 'asc')
             .first();
         
@@ -35,11 +35,13 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         // For now, we'll use a modified version of the initial state
         const currentState: BaseballState = {
             ...createEmptyBaseballState(),
-            gameId: gameId
+            gameId: gameId,
+            currentPlay: currentPlay,
+            gameType: 'replay' // Default to replay mode
         };
 
         // Create a prompt using our template
-        const prompt = generateNextPlayPrompt(currentState, nextPlay, lastPlayIndex);
+        const prompt = generateNextPlayPrompt(currentState, nextPlay, currentPlay);
 
         try {
             // Send the prompt to OpenAI with game ID
@@ -59,7 +61,9 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 game: {
                     ...createEmptyBaseballState().game,
                     log: logEntries
-                }
+                },
+                currentPlay: nextPlay.pn, // Update to the new current play
+                gameType: currentState.gameType // Preserve the game type
             };
             
             res.json(updatedState);
