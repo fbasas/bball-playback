@@ -109,7 +109,7 @@ export async function generateLineupAnnouncementPrompt(gameId: string): Promise<
         if (player) {
           // Get the player's field position
           const positionCode = homeFieldPositions.get(playerId);
-          const position = positionCode ? (positionMap[positionCode] || positionCode) : 'Unknown';
+          const position = positionCode ? (positionMap[positionCode] || positionCode) : 'DH';
           
           homeLineup.push({
             battingOrder: i,
