@@ -1,7 +1,9 @@
 import { RequestHandler } from 'express';
+import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateLineupAnnouncementPrompt } from '../../services/prompts';
+import { getLineupData } from '../../services/game/getLineupData';
 
 export const announceLineups: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
@@ -24,8 +26,11 @@ export const announceLineups: RequestHandler = async (req, res) => {
         }
 
         try {
-            // Create a prompt using our template
-            const prompt = await generateLineupAnnouncementPrompt(gameId);
+            // Get lineup data
+            const lineupData = await getLineupData(gameId);
+            
+            // Create a prompt using our template and the lineup data
+            const prompt = generateLineupAnnouncementPrompt(lineupData);
 
             // Send the prompt to OpenAI with game ID
             const completionText = await generateCompletion(prompt, gameId);
@@ -37,11 +42,33 @@ export const announceLineups: RequestHandler = async (req, res) => {
                 .filter(line => line.trim() !== '') // Remove empty lines
                 .map(line => line.trim());          // Trim whitespace
 
-            // Return the lineup announcement
-            res.json({
+            // Return a modified version of the initial state with the lineup announcement
+            const gameState: BaseballState = {
+                ...createEmptyBaseballState(),
                 gameId: gameId,
-                announcement: logEntries
-            });
+                game: {
+                    ...createEmptyBaseballState().game,
+                    log: logEntries
+                },
+                home: {
+                    ...createEmptyBaseballState().home,
+                    id: lineupData.homeTeam.id,
+                    displayName: lineupData.homeTeam.displayName,
+                    shortName: lineupData.homeTeam.shortName,
+                    currentPitcher: lineupData.homeTeam.currentPitcher,
+                    lineup: lineupData.homeTeam.lineup
+                },
+                visitors: {
+                    ...createEmptyBaseballState().visitors,
+                    id: lineupData.visitingTeam.id,
+                    displayName: lineupData.visitingTeam.displayName,
+                    shortName: lineupData.visitingTeam.shortName,
+                    currentPitcher: lineupData.visitingTeam.currentPitcher,
+                    lineup: lineupData.visitingTeam.lineup
+                }
+            };
+            
+            res.json(gameState);
         } catch (error) {
             console.error('Error generating completion:', error);
             res.status(500).json({ error: 'Failed to generate completion' });

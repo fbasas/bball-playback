@@ -2,8 +2,7 @@
 
 import { useState, useEffect, KeyboardEvent, useRef } from "react"
 import "./BaseballGame.css"
-import { getFullName, BaseballState, Player } from "../../../common/types/BaseballTypes"
-import { initialBaseballState } from "../../../common/data/initialBaseballState"
+import { getFullName, BaseballState, Player, createEmptyBaseballState } from "../../../common/types/BaseballTypes"
 import { config } from "../config/config"
 import TypedText from "./TypedText"
 import Scoreboard from "./Scoreboard"
@@ -21,7 +20,7 @@ function BaseballGame() {
 
   // Combined game state object suitable for REST API
   const [gameState, setGameState] = useState<BaseballState>({
-    ...initialBaseballState,
+    ...createEmptyBaseballState(),
     gameId: getGameIdFromUrl()
   });
 
@@ -93,7 +92,7 @@ function BaseballGame() {
         console.error('Error initializing game state:', error);
         // Fallback to initial state if API call fails
         setGameState(prevState => ({
-          ...initialBaseballState,
+          ...createEmptyBaseballState(),
           gameId: gameId
         }));
         setRenderedEntryCount(0);

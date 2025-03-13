@@ -1,6 +1,5 @@
 import { RequestHandler } from 'express';
-import { BaseballState } from '../../../../common/types/BaseballTypes';
-import { initialBaseballState } from '../../../../common/data/initialBaseballState';
+import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateNextPlayPrompt } from '../../services/prompts';
@@ -35,7 +34,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         // Get current game state (in a real app, you'd retrieve this from a database)
         // For now, we'll use a modified version of the initial state
         const currentState: BaseballState = {
-            ...initialBaseballState,
+            ...createEmptyBaseballState(),
             gameId: gameId
         };
 
@@ -55,10 +54,10 @@ export const getNextPlay: RequestHandler = async (req, res) => {
 
             // Return a modified version of the current state
             const updatedState: BaseballState = {
-                ...initialBaseballState,
+                ...createEmptyBaseballState(),
                 gameId: gameId,
                 game: {
-                    ...initialBaseballState.game,
+                    ...createEmptyBaseballState().game,
                     log: logEntries
                 }
             };

@@ -1,6 +1,5 @@
 import { RequestHandler } from 'express';
-import { BaseballState } from '../../../../common/types/BaseballTypes';
-import { initialBaseballState } from '../../../../common/data/initialBaseballState';
+import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
 
 interface CreateGameRequest {
     homeTeamId: string;
@@ -21,14 +20,14 @@ export const createGame: RequestHandler = (req, res) => {
         
         // Create initial game state with the provided team IDs
         const gameState: BaseballState = {
-            ...initialBaseballState,
+            ...createEmptyBaseballState(),
             gameId,
             home: {
-                ...initialBaseballState.home,
+                ...createEmptyBaseballState().home,
                 id: homeTeamId
             },
             visitors: {
-                ...initialBaseballState.visitors,
+                ...createEmptyBaseballState().visitors,
                 id: visitingTeamId
             }
         };

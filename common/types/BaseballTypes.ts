@@ -58,3 +58,45 @@ export interface BaseballState {
 // Helper function to get full name
 export const getFullName = (firstName: string, lastName: string): string => 
   `${firstName} ${lastName}`;
+
+// Function to create an empty baseball state
+export const createEmptyBaseballState = (): BaseballState => ({
+  gameId: "-1",
+  game: {
+    inning: 1,
+    isTopInning: true,
+    outs: 0,
+    onFirst: "",
+    onSecond: "",
+    onThird: "",
+    log: []
+  },
+  home: {
+    id: "",
+    displayName: "",
+    shortName: "",
+    currentPitcher: "",
+    lineup: [],
+    stats: {
+      innings: [], // Empty array - innings haven't happened yet
+      runs: 0,
+      hits: 0,
+      errors: 0
+    },
+    currentBatter: null
+  },
+  visitors: {
+    id: "",
+    displayName: "",
+    shortName: "",
+    currentPitcher: "",
+    lineup: [],
+    stats: {
+      innings: [], // Empty array - innings haven't happened yet
+      runs: 0,
+      hits: 0,
+      errors: 0
+    },
+    currentBatter: null
+  }
+});

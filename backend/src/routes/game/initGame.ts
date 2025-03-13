@@ -1,6 +1,5 @@
 import { RequestHandler } from 'express';
-import { BaseballState } from '../../../../common/types/BaseballTypes';
-import { initialBaseballState } from '../../../../common/data/initialBaseballState';
+import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateInitGamePrompt } from '../../services/prompts';
@@ -28,7 +27,7 @@ export const initGame: RequestHandler = async (req, res) => {
         try {
             // Create a prompt using our template
             const prompt = await generateInitGamePrompt({
-                ...initialBaseballState,
+                ...createEmptyBaseballState(),
                 gameId: gameId
             });
 
@@ -44,10 +43,10 @@ export const initGame: RequestHandler = async (req, res) => {
 
             // Return a modified version of the initial state
             const gameState: BaseballState = {
-                ...initialBaseballState,
+                ...createEmptyBaseballState(),
                 gameId: gameId,
                 game: {
-                    ...initialBaseballState.game,
+                    ...createEmptyBaseballState().game,
                     log: logEntries
                 }
             };

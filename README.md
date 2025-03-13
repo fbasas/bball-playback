@@ -20,7 +20,7 @@ graph TD
     
     subgraph Common
         Types[Shared Types]
-        InitialState[Initial Game State]
+        StateUtils[State Utilities]
     end
     
     subgraph Backend
@@ -94,13 +94,13 @@ The backend is built with Express.js and TypeScript. The main entry point is `ba
 
 The backend provides the following API endpoints:
 
-#### Game Routes (`backend/src/routes/game.ts`)
+#### Game Routes (`backend/src/routes/game/`)
 
 - `POST /api/game/createGame`: Creates a new game with specified home and visiting teams
 - `GET /api/game/init/:gameId`: Initializes a game with the specified ID
 - `GET /api/game/next/:gameId`: Retrieves the next play for the specified game
 - `GET /api/game/info/:gid`: Retrieves game information from the plays table
-- `GET /api/game/announceLineups/:gameId`: Announces the starting lineups for a game
+- `GET /api/game/announceLineups/:gameId`: Announces the starting lineups for a game with AI-generated commentary
 
 ### Services
 
@@ -108,10 +108,12 @@ The backend provides the following API endpoints:
 
 The backend integrates with OpenAI's API to generate play-by-play commentary. The service:
 
-- Sends prompts to OpenAI's API
+- Sends prompts to OpenAI's API using either the chat completions or completions API based on the model
 - Processes and formats the responses
-- Logs completions to the database
-- Uses configurable parameters for token limits and temperature
+- Logs completions to the database with detailed metrics
+- Handles different model types (GPT-4, GPT-3.5-turbo, etc.)
+- Measures and records latency for performance monitoring
+- Supports retry logic for handling API failures
 
 The OpenAI integration is configured with the following parameters:
 - `model`: The OpenAI model to use (e.g., gpt-4, gpt-3.5-turbo)
@@ -124,7 +126,18 @@ The backend uses Handlebars templates to generate prompts for OpenAI. Each promp
 
 - `initGame.ts`: Template and function for initializing a game
 - `nextPlay.ts`: Template and function for generating the next play
-- `lineupAnnouncement.ts`: Template and function for announcing lineups
+- `lineupAnnouncement.ts`: Template and function for announcing lineups using the lineup data service
+
+#### Game Services (`backend/src/services/game/`)
+
+The backend includes services for retrieving and processing game data:
+
+- `getLineupData.ts`: Service for retrieving lineup data from the database, including:
+  - Team information (ID, display name, short name)
+  - Player information (name, position)
+  - Batting order
+  - Starting pitchers
+  - Position mapping (converting position codes to readable position names)
 
 ### Database Schema
 
@@ -141,6 +154,9 @@ openai_completions_log
 - model
 - temperature
 - max_tokens
+- top_p
+- frequency_penalty
+- presence_penalty
 - completion_id
 - content
 - finish_reason
@@ -148,6 +164,10 @@ openai_completions_log
 - completion_tokens
 - total_tokens
 - game_id
+- play_index
+- inning
+- is_top_inning
+- outs
 - latency_ms
 - retry_count
 - created_at
@@ -196,12 +216,13 @@ The application uses shared TypeScript interfaces to ensure type consistency bet
 - `TeamState`: Information about a team, including lineup and stats
 - `Player`: Information about a player, including position and name
 
-### Initial Baseball State (`common/data/initialBaseballState.ts`)
+### Baseball State Utilities
 
-The application includes a default initial state for new games, which includes:
-- Default lineups for both teams
-- Initial game state (inning 1, top half, 0 outs)
-- Sample game log entries
+The application provides utilities for working with baseball state:
+
+- `createEmptyBaseballState()`: A function that creates an empty baseball state object with default values
+- This replaces the previous hardcoded initial state with a more flexible approach
+- Used throughout the application to initialize new game states
 
 ## Development Workflow
 
