@@ -10,8 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "node dist/bball-playback.ts",
-    "dev": "nodemon src/bball-playback.ts",
-    "debug": "nodemon --inspect src/bball-playback.ts"
+    "dev": "nodemon --ext js,ts src/bball-playback.ts",
+    "debug": "nodemon --ext js,ts --inspect src/bball-playback.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

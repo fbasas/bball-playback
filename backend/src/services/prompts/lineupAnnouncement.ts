@@ -3,7 +3,7 @@ import { db } from '../../config/database';
 
 // Template for lineup announcements
 export const lineupAnnouncementTemplate = Handlebars.compile(`
-Announce the starting lineups for a baseball game.
+Announce the starting lineups in an engaging baseball announcer style. Make sure to mention each player's position and batting order.
 
 Home Team Lineup ({{homeTeam.nickname}}):
 {{#each homeLineup}}
@@ -16,9 +16,8 @@ Visiting Team Lineup ({{visitingTeam.nickname}}):
 {{battingOrder}}. {{position}} - {{firstName}} {{lastName}}
 {{/each}}
 Starting Pitcher: {{visitingPitcher.firstName}} {{visitingPitcher.lastName}}
-
-Announce the starting lineups in an engaging baseball announcer style. Make sure to mention each player's position and batting order. Mention any notable players, achievements, or statistics where appropriate. Be enthusiastic and build excitement for the game.
-`);
+`
+);
 
 // Function to generate the lineup announcement prompt
 export async function generateLineupAnnouncementPrompt(gameId: string): Promise<string> {
