@@ -5,7 +5,7 @@ dotenv.config();
 import express = require('express');
 import cors = require('cors');
 import { TestRouter } from "./routes/test";
-import { GameRouter } from "./routes/game";
+import { GameRouter } from "./routes/game/index";
 
 const app = express();
 const port = parseInt(process.env.PORT || '3001'); // Use PORT from .env or default to 3001
