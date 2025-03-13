@@ -6,6 +6,7 @@ import { generateInitGamePrompt } from '../../services/prompts';
 
 export const initGame: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
+    const skipLLM = req.query.skipLLM === 'true';
     
     if (!gameId) {
         res.status(400).json({ error: 'Game ID is required' });
@@ -31,8 +32,17 @@ export const initGame: RequestHandler = async (req, res) => {
                 gameId: gameId
             });
 
-            // Send the prompt to OpenAI with game ID
-            const completionText = await generateCompletion(prompt, gameId);
+            // Generate completion text
+            let completionText;
+            
+            if (skipLLM) {
+                // Skip LLM call and use dummy text for testing
+                console.log('Skipping LLM call and using dummy response');
+                completionText = "This is a dummy response for testing purposes. LLM calls are being skipped.";
+            } else {
+                // Send the prompt to OpenAI with game ID
+                completionText = await generateCompletion(prompt, gameId);
+            }
 
             // Split the completion text by sentence endings to create an array of log entries
             const logEntries = completionText

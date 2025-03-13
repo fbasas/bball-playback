@@ -3,10 +3,12 @@ import { BaseballState, createEmptyBaseballState } from '../../../../common/type
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateNextPlayPrompt } from '../../services/prompts';
+import { detectAndSaveLineupChanges } from '../../services/game/lineupTracking';
 
 export const getNextPlay: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
     const currentPlay = parseInt(req.query.currentPlay as string);
+    const skipLLM = req.query.skipLLM === 'true';
     
     if (!gameId) {
         res.status(400).json({ error: 'Game ID is required' });
@@ -44,8 +46,17 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         const prompt = generateNextPlayPrompt(currentState, nextPlay, currentPlay);
 
         try {
-            // Send the prompt to OpenAI with game ID
-            const completionText = await generateCompletion(prompt, gameId);
+            // Generate completion text
+            let completionText;
+            
+            if (skipLLM) {
+                // Skip LLM call and use dummy text for testing
+                console.log('Skipping LLM call and using dummy response');
+                completionText = "This is a dummy response for testing purposes. LLM calls are being skipped.";
+            } else {
+                // Send the prompt to OpenAI with game ID
+                completionText = await generateCompletion(prompt, gameId);
+            }
 
             // Split the completion text by sentence endings to create an array of log entries
             const logEntries = completionText
@@ -60,11 +71,30 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 gameId: gameId,
                 game: {
                     ...createEmptyBaseballState().game,
-                    log: logEntries
+                    log: logEntries,
+                    inning: nextPlay.inn_ct || 1,
+                    isTopInning: nextPlay.bat_home_id === '0', // 0 = visitor (top), 1 = home (bottom)
+                    outs: nextPlay.outs_ct || 0
                 },
                 currentPlay: nextPlay.pn, // Update to the new current play
                 gameType: currentState.gameType // Preserve the game type
             };
+            
+            // Track lineup changes
+            try {
+                // Get the current play data (the play before nextPlay)
+                const currentPlayData = await db('plays')
+                    .where({ gid: gameId, pn: currentPlay })
+                    .first();
+                
+                if (currentPlayData) {
+                    // Detect and save lineup changes between the current play and next play
+                    await detectAndSaveLineupChanges(gameId, currentPlayData, nextPlay);
+                }
+            } catch (error) {
+                console.error('Error tracking lineup changes:', error);
+                // Continue even if lineup tracking fails
+            }
             
             res.json(updatedState);
         } catch (error) {

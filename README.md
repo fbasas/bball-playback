@@ -187,6 +187,48 @@ umpires
 - last_g (last game date)
 ```
 
+#### Lineup Tracking Tables
+
+The application includes tables for tracking lineup changes during games:
+
+```
+lineup_states
+- id (primary key)
+- game_id
+- play_index
+- inning
+- is_top_inning
+- outs
+- timestamp
+```
+
+```
+lineup_players
+- id (primary key)
+- lineup_state_id (foreign key to lineup_states)
+- team_id
+- player_id
+- batting_order
+- position
+- is_current_batter
+- is_current_pitcher
+```
+
+```
+lineup_changes
+- id (primary key)
+- lineup_state_id (foreign key to lineup_states)
+- change_type (SUBSTITUTION, POSITION_CHANGE, BATTING_ORDER_CHANGE, PITCHING_CHANGE, INITIAL_LINEUP, OTHER)
+- player_in_id
+- player_out_id
+- position_from
+- position_to
+- batting_order_from
+- batting_order_to
+- team_id
+- description
+```
+
 The database also includes tables from the Retrosheet database:
 - `plays`: Contains play-by-play data for baseball games
 - `gameinfo`: Contains metadata about baseball games

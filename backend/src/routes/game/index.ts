@@ -4,6 +4,11 @@ import { initGame } from './initGame';
 import { getNextPlay } from './nextPlay';
 import { getGameInfo } from './gameInfo';
 import { announceLineups } from './announceLineups';
+import { 
+  getLineupHistory, 
+  getLineupStateForPlayHandler, 
+  getLatestLineupStateHandler 
+} from './lineupHistory';
 
 const router = express.Router();
 
@@ -12,5 +17,10 @@ router.get('/init/:gameId', initGame);
 router.get('/next/:gameId', getNextPlay);
 router.get('/info/:gid', getGameInfo);
 router.get('/announceLineups/:gameId', announceLineups);
+
+// Lineup tracking routes
+router.get('/lineup/history/:gameId', getLineupHistory);
+router.get('/lineup/state/:gameId/:playIndex', getLineupStateForPlayHandler);
+router.get('/lineup/latest/:gameId', getLatestLineupStateHandler);
 
 export const GameRouter = router;

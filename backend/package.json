@@ -11,12 +11,15 @@
     "build": "tsc",
     "start": "node dist/bball-playback.ts",
     "dev": "nodemon --ext js,ts src/bball-playback.ts",
-    "debug": "nodemon --ext js,ts --inspect src/bball-playback.ts"
+    "debug": "nodemon --ext js,ts --inspect src/bball-playback.ts",
+    "test:lineup": "ts-node src/scripts/testLineupTracking.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/handlebars": "^4.0.40",
     "@types/node": "^22.13.4",
+    "axios": "^1.8.3",
+    "dotenv-cli": "^8.0.0",
     "express": "^4.21.2",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",

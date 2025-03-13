@@ -16,3 +16,5 @@ externaldata
 frontend/.env
 backend/.env
 common/.env
+.clinerules
+.env.migration
