@@ -112,7 +112,8 @@ export async function getLineupData(gameId: string): Promise<LineupData> {
           homeLineup.push({
             position,
             firstName: player.first || '',
-            lastName: player.last || ''
+            lastName: player.last || '',
+            retrosheet_id: playerId
           });
         }
       }
@@ -137,7 +138,8 @@ export async function getLineupData(gameId: string): Promise<LineupData> {
           visitingLineup.push({
             position,
             firstName: player.first || '',
-            lastName: player.last || ''
+            lastName: player.last || '',
+            retrosheet_id: playerId
           });
         }
       }
@@ -157,7 +159,8 @@ export async function getLineupData(gameId: string): Promise<LineupData> {
         homePitcher = {
           position: 'P',
           firstName: player.first || '',
-          lastName: player.last || ''
+          lastName: player.last || '',
+          retrosheet_id: homePitcherId
         };
       }
     }
@@ -176,7 +179,8 @@ export async function getLineupData(gameId: string): Promise<LineupData> {
         visitingPitcher = {
           position: 'P',
           firstName: player.first || '',
-          lastName: player.last || ''
+          lastName: player.last || '',
+          retrosheet_id: visitingPitcherId
         };
       }
     }

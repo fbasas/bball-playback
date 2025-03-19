@@ -15,6 +15,7 @@ export interface Player {
   position: string;
   firstName: string;
   lastName: string;
+  retrosheet_id: string; // Retrosheet database ID
 }
 
 // Team stats
@@ -50,6 +51,7 @@ export interface GameState {
 // Complete baseball state
 export interface BaseballState {
   gameId: string;
+  sessionId: string; // Session ID to distinguish between multiple runs of the same game
   game: GameState;
   home: TeamState;
   visitors: TeamState;
@@ -64,6 +66,7 @@ export const getFullName = (firstName: string, lastName: string): string =>
 // Function to create an empty baseball state
 export const createEmptyBaseballState = (): BaseballState => ({
   gameId: "-1",
+  sessionId: "-1", // Default session ID
   game: {
     inning: 1,
     isTopInning: true,
@@ -101,6 +104,6 @@ export const createEmptyBaseballState = (): BaseballState => ({
     },
     currentBatter: null
   },
-  currentPlay: -1, // Default to -1 (no plays yet, so next play will be index 0)
+  currentPlay: 0, // Default to 0 (no plays yet, so next play will be index 1)
   gameType: 'replay' // Default to replay mode
 });

@@ -6,14 +6,20 @@ import { getAllLineupChanges, getLatestLineupState, getLineupStateForPlay } from
  */
 export const getLineupHistory: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;
+  const sessionId = req.headers['session-id'] as string;
   
   if (!gameId) {
     res.status(400).json({ error: 'Game ID is required' });
     return;
   }
   
+  if (!sessionId) {
+    res.status(400).json({ error: 'Session ID header is required' });
+    return;
+  }
+  
   try {
-    const changes = await getAllLineupChanges(gameId);
+    const changes = await getAllLineupChanges(gameId, sessionId);
     res.json({ changes });
   } catch (error) {
     console.error('Error getting lineup history:', error);
@@ -26,10 +32,16 @@ export const getLineupHistory: RequestHandler = async (req, res) => {
  */
 export const getLineupStateForPlayHandler: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;
+  const sessionId = req.headers['session-id'] as string;
   const playIndex = parseInt(req.params.playIndex);
   
   if (!gameId) {
     res.status(400).json({ error: 'Game ID is required' });
+    return;
+  }
+  
+  if (!sessionId) {
+    res.status(400).json({ error: 'Session ID header is required' });
     return;
   }
   
@@ -39,7 +51,7 @@ export const getLineupStateForPlayHandler: RequestHandler = async (req, res) => 
   }
   
   try {
-    const lineupState = await getLineupStateForPlay(gameId, playIndex);
+    const lineupState = await getLineupStateForPlay(gameId, sessionId, playIndex);
     
     if (!lineupState) {
       res.status(404).json({ error: 'Lineup state not found for the specified game and play' });
@@ -58,14 +70,20 @@ export const getLineupStateForPlayHandler: RequestHandler = async (req, res) => 
  */
 export const getLatestLineupStateHandler: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;
+  const sessionId = req.headers['session-id'] as string;
   
   if (!gameId) {
     res.status(400).json({ error: 'Game ID is required' });
     return;
   }
   
+  if (!sessionId) {
+    res.status(400).json({ error: 'Session ID header is required' });
+    return;
+  }
+  
   try {
-    const lineupState = await getLatestLineupState(gameId);
+    const lineupState = await getLatestLineupState(gameId, sessionId);
     
     if (!lineupState) {
       res.status(404).json({ error: 'Lineup state not found for the specified game' });

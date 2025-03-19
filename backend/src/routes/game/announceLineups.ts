@@ -7,10 +7,16 @@ import { getLineupData } from '../../services/game/getLineupData';
 
 export const announceLineups: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
+    const sessionId = req.headers['session-id'] as string;
     const skipLLM = req.query.skipLLM === 'true';
     
     if (!gameId) {
         res.status(400).json({ error: 'Game ID is required' });
+        return;
+    }
+    
+    if (!sessionId) {
+        res.status(400).json({ error: 'Session ID header is required' });
         return;
     }
 
@@ -56,6 +62,7 @@ export const announceLineups: RequestHandler = async (req, res) => {
             const gameState: BaseballState = {
                 ...createEmptyBaseballState(),
                 gameId: gameId,
+                sessionId: sessionId,
                 game: {
                     ...createEmptyBaseballState().game,
                     log: logEntries

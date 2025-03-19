@@ -1,0 +1,8 @@
+{
+  "watch": ["src"],
+  "ext": "js,ts,json",
+  "ignore": ["src/**/*.spec.ts"],
+  "delay": "1000",
+  "verbose": true,
+  "exec": "ts-node --project tsconfig.json src/bball-playback.ts"
+}

@@ -1,4 +1,5 @@
 import { RequestHandler } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
 
 interface CreateGameRequest {
@@ -18,10 +19,14 @@ export const createGame: RequestHandler = (req, res) => {
         // Generate a unique game ID (for now, using timestamp)
         const gameId = Date.now().toString();
         
+        // Generate a unique session ID using UUID
+        const sessionId = uuidv4();
+        
         // Create initial game state with the provided team IDs
         const gameState: BaseballState = {
             ...createEmptyBaseballState(),
             gameId,
+            sessionId,
             home: {
                 ...createEmptyBaseballState().home,
                 id: homeTeamId
@@ -32,7 +37,7 @@ export const createGame: RequestHandler = (req, res) => {
             }
         };
         
-        res.json({ gameId, gameState });
+        res.json({ gameId, sessionId, gameState });
     } catch (error) {
         console.error('Error creating game:', error);
         res.status(500).json({ error: 'Failed to create game' });
