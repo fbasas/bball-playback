@@ -138,6 +138,7 @@ export class LineupChangeDetector {
 
     console.log(`[LINEUP] Pitcher change detected: ${this.currentPlay.pitcher} -> ${this.nextPlay.pitcher}`);
     const pitcherName = await this.getPlayerName(this.nextPlay.pitcher);
+    const oldPitcherName = await this.getPlayerName(this.currentPlay.pitcher);
     const teamId = this.nextPlay.top_bot === 0 ? this.nextPlay.pitteam : this.nextPlay.batteam;
 
     this.changes.push({
@@ -145,7 +146,7 @@ export class LineupChangeDetector {
       playerInId: String(this.nextPlay.pitcher),
       playerOutId: String(this.currentPlay.pitcher),
       teamId: String(teamId),
-      description: `Pitching change: ${pitcherName} replaces ${this.currentPlay.pitcher}`
+      description: `Pitching change: ${pitcherName} replaces ${oldPitcherName}`
     });
   }
 

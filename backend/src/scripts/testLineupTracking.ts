@@ -287,6 +287,18 @@ async function testLineupTracking() {
         console.log(`- Current play: ${currentPlay} -> Next play: ${nextPlayData.currentPlay}`);
         console.log(`- Inning: ${nextPlayData.game.inning} (${nextPlayData.game.isTopInning ? 'Top' : 'Bottom'})`);
         console.log(`- Outs: ${nextPlayData.game.outs}`);
+
+        if (nextPlayData.game.isTopInning) {
+          console.log(`- Current batter: ${nextPlayData.visitors.currentBatter}`);
+          console.log(`- Current pitcher: ${nextPlayData.home.currentPitcher}`);
+        } else {
+          console.log(`- Current batter: ${nextPlayData.home.currentBatter}`);
+          console.log(`- Current pitcher: ${nextPlayData.visitors.currentPitcher}`);
+        }
+
+        console.log(`- On first: ${nextPlayData.game.onFirst}`);
+        console.log(`- On second: ${nextPlayData.game.onSecond}`);
+        console.log(`- On third: ${nextPlayData.game.onThird}`);
         
         // Display home team lineup with player IDs only (one line)
         console.log(`- Home Team Lineup:`);
