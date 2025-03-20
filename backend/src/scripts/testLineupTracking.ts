@@ -9,6 +9,7 @@ dotenv.config();
 // Configuration
 const API_BASE_URL = 'http://localhost:3001/api';
 const GAME_ID = 'NYA202410300'; // Test game ID
+const NUM_PLAYS = 100;
 let SESSION_ID = ''; // Will be set during test execution
 
 /**
@@ -269,7 +270,7 @@ async function testLineupTracking() {
     // Step 4: Make a few next play requests to trigger lineup changes
     console.log('\nStep 4: Making next play requests to trigger lineup changes...');
     let currentPlay = 1; // Start from the beginning
-    const numPlaysToProcess = 100; // Process 100 plays
+    const numPlaysToProcess = NUM_PLAYS;
     let playsProcessed = 0;
     
     for (let i = 0; i < numPlaysToProcess; i++) {
@@ -360,7 +361,7 @@ async function testLineupTracking() {
     
     if (lineupHistory.changes.length > 0) {
       console.log('\nSample lineup changes:');
-      lineupHistory.changes.slice(0, 5).forEach((change: any, index: number) => {
+      lineupHistory.changes.forEach((change: any, index: number) => {
         console.log(`\nChange #${index + 1}:`);
         console.log(`- Type: ${change.changeType}`);
         console.log(`- Play: ${change.playIndex}`);
