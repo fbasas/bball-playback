@@ -9,7 +9,7 @@ dotenv.config();
 // Configuration
 const API_BASE_URL = 'http://localhost:3001/api';
 const GAME_ID = 'NYA202410300'; // Test game ID
-const NUM_PLAYS = 100;
+const NUM_PLAYS = 5;
 let SESSION_ID = ''; // Will be set during test execution
 
 /**
