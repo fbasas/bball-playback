@@ -1,5 +1,6 @@
 import { db } from '../../config/database';
 import { Player } from '../../../../common/types/BaseballTypes';
+import { PlayData } from '../../../../common/types/PlayData';
 import { LineupChangeDetector } from './LineupChangeDetector';
 
 /**
@@ -423,29 +424,6 @@ export async function saveInitialLineup(
   }
 }
 
-/**
- * Interface for play data from the database
- */
-export interface PlayData {
-  gid: string;
-  pn: number;
-  inning: number;
-  top_bot: number;
-  batteam: string;
-  pitteam: string;
-  batter: string;
-  pitcher: string;
-  outs_pre: number;
-  f2?: string;
-  f3?: string;
-  f4?: string;
-  f5?: string;
-  f6?: string;
-  f7?: string;
-  f8?: string;
-  f9?: string;
-  // Add other fields as needed
-}
 
 /**
  * Detect and save lineup changes between plays using play-by-play data

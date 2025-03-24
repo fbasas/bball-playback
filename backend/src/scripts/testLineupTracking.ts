@@ -2,6 +2,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import assert from 'assert';
 import { v4 as uuidv4 } from 'uuid';
+import { PlayData } from '../../../common/types/PlayData';
 
 // Load environment variables
 dotenv.config();
@@ -238,6 +239,65 @@ async function validatePositionChanges(gameId: string, sessionId: string) {
 }
 
 /**
+ * Log the current game state
+ */
+function logGameState(nextPlayData: {
+  currentPlay: number;
+  game: {
+    inning: number;
+    isTopInning: boolean;
+    outs: number;
+    onFirst: string;
+    onSecond: string;
+    onThird: string;
+  };
+  home: {
+    currentBatter: string;
+    currentPitcher: string;
+    lineup: Array<{lastName: string}>;
+  };
+  visitors: {
+    currentBatter: string;
+    currentPitcher: string;
+    lineup: Array<{lastName: string}>;
+  };
+}) {
+  console.log(`- Current play: ${nextPlayData.currentPlay - 1} -> Next play: ${nextPlayData.currentPlay}`);
+  console.log(`- Inning: ${nextPlayData.game.inning} (${nextPlayData.game.isTopInning ? 'Top' : 'Bottom'})`);
+  console.log(`- Outs: ${nextPlayData.game.outs}`);
+
+  if (nextPlayData.game.isTopInning) {
+    console.log(`- Current batter: ${nextPlayData.visitors.currentBatter}`);
+    console.log(`- Current pitcher: ${nextPlayData.home.currentPitcher}`);
+  } else {
+    console.log(`- Current batter: ${nextPlayData.home.currentBatter}`);
+    console.log(`- Current pitcher: ${nextPlayData.visitors.currentPitcher}`);
+  }
+
+  console.log(`- On first: ${nextPlayData.game.onFirst}`);
+  console.log(`- On second: ${nextPlayData.game.onSecond}`);
+  console.log(`- On third: ${nextPlayData.game.onThird}`);
+  
+  // Display home team lineup with player IDs only (one line)
+  console.log(`- Home Team Lineup:`);
+  if (nextPlayData.home.lineup && nextPlayData.home.lineup.length > 0) {
+    const homeIds = nextPlayData.home.lineup.map((player: any) => player.lastName);
+    console.log(`  ${homeIds.join(', ')}`);
+  } else {
+    console.log(`  No lineup data available`);
+  }
+  
+  // Display visiting team lineup with player IDs only (one line)
+  console.log(`- Visiting Team Lineup:`);
+  if (nextPlayData.visitors.lineup && nextPlayData.visitors.lineup.length > 0) {
+    const visitorIds = nextPlayData.visitors.lineup.map((player: any) => player.lastName);
+    console.log(`  ${visitorIds.join(', ')}`);
+  } else {
+    console.log(`  No lineup data available`);
+  }
+}
+
+/**
  * Test the lineup tracking functionality
  */
 async function testLineupTracking() {
@@ -257,6 +317,7 @@ async function testLineupTracking() {
       }
     });
     console.log('Game initialized successfully.');
+    logGameState(initResponse.data);
     
     // Step 3: Validate the initial lineup state
     console.log('\nStep 3: Validating initial lineup state...');
@@ -274,7 +335,7 @@ async function testLineupTracking() {
     let playsProcessed = 0;
     
     for (let i = 0; i < numPlaysToProcess; i++) {
-      console.log(`\nProcessing play ${i + 1}/${numPlaysToProcess}...`);
+        console.log(`\nProcessing play ${i + 1}/${numPlaysToProcess}...`);
       try {
         // Add skipLLM=true query parameter to skip LLM calls during testing
         const nextPlayResponse = await axios.get(`${API_BASE_URL}/game/next/${GAME_ID}?currentPlay=${currentPlay}&skipLLM=true`, {
@@ -284,39 +345,7 @@ async function testLineupTracking() {
         });
         const nextPlayData = nextPlayResponse.data;
         
-        console.log(`- Current play: ${currentPlay} -> Next play: ${nextPlayData.currentPlay}`);
-        console.log(`- Inning: ${nextPlayData.game.inning} (${nextPlayData.game.isTopInning ? 'Top' : 'Bottom'})`);
-        console.log(`- Outs: ${nextPlayData.game.outs}`);
-
-        if (nextPlayData.game.isTopInning) {
-          console.log(`- Current batter: ${nextPlayData.visitors.currentBatter}`);
-          console.log(`- Current pitcher: ${nextPlayData.home.currentPitcher}`);
-        } else {
-          console.log(`- Current batter: ${nextPlayData.home.currentBatter}`);
-          console.log(`- Current pitcher: ${nextPlayData.visitors.currentPitcher}`);
-        }
-
-        console.log(`- On first: ${nextPlayData.game.onFirst}`);
-        console.log(`- On second: ${nextPlayData.game.onSecond}`);
-        console.log(`- On third: ${nextPlayData.game.onThird}`);
-        
-        // Display home team lineup with player IDs only (one line)
-        console.log(`- Home Team Lineup:`);
-        if (nextPlayData.home.lineup && nextPlayData.home.lineup.length > 0) {
-          const homeIds = nextPlayData.home.lineup.map((player: any) => player.lastName);
-          console.log(`  ${homeIds.join(', ')}`);
-        } else {
-          console.log(`  No lineup data available`);
-        }
-        
-        // Display visiting team lineup with player IDs only (one line)
-        console.log(`- Visiting Team Lineup:`);
-        if (nextPlayData.visitors.lineup && nextPlayData.visitors.lineup.length > 0) {
-          const visitorIds = nextPlayData.visitors.lineup.map((player: any) => player.lastName);
-          console.log(`  ${visitorIds.join(', ')}`);
-        } else {
-          console.log(`  No lineup data available`);
-        }
+        logGameState(nextPlayData);
         
         // Update current play for the next iteration
         currentPlay = nextPlayData.currentPlay;

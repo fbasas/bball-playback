@@ -1,5 +1,6 @@
 import { Request, RequestHandler } from 'express';
 import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
+import { PlayData, PlayDataResult } from '../../../../common/types/PlayData';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateNextPlayPrompt } from '../../services/prompts';
@@ -12,10 +13,6 @@ interface RequestParams {
     skipLLM: boolean;
 }
 
-interface PlayData {
-    currentPlayData: any;
-    nextPlayData: any;
-}
 
 const validateRequestInput = (gameId: string, sessionId: string, currentPlay: number): void => {
     if (!gameId) {
@@ -29,7 +26,7 @@ const validateRequestInput = (gameId: string, sessionId: string, currentPlay: nu
     }
 };
 
-const fetchPlayData = async (gameId: string, currentPlay: number): Promise<PlayData> => {
+const fetchPlayData = async (gameId: string, currentPlay: number): Promise<PlayDataResult> => {
     const currentPlayData = await db('plays')
         .where({ gid: gameId, pn: currentPlay })
         .first();
@@ -66,7 +63,7 @@ const createInitialBaseballState = (
     gameId: string, 
     sessionId: string, 
     currentPlay: number, 
-    currentPlayData: any
+    currentPlayData: PlayData
 ): BaseballState => ({
     ...createEmptyBaseballState(),
     gameId,
@@ -94,7 +91,7 @@ const processLineupState = async (
     sessionId: string,
     currentPlay: number,
     currentState: BaseballState,
-    currentPlayData: any
+    currentPlayData: PlayData
 ): Promise<BaseballState> => {
     const lineupState = await getLineupStateForPlay(gameId, sessionId, currentPlay);
     
@@ -210,7 +207,7 @@ const processLineupState = async (
 
 const generatePlayCompletion = async (
     currentState: BaseballState,
-    nextPlay: any,
+    nextPlay: PlayData,
     currentPlay: number,
     skipLLM: boolean,
     gameId: string

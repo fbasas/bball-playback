@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import { BaseballState, createEmptyBaseballState, Player } from '../../../../common/types/BaseballTypes';
+import { PlayData } from '../../../../common/types/PlayData';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateInitGamePrompt } from '../../services/prompts';
@@ -23,7 +24,7 @@ export const initGame: RequestHandler = async (req, res) => {
 
     try {
         // Query the plays table for the first play (lowest 'pn' value) for this game
-        const firstPlay = await db('plays')
+        const firstPlay: PlayData = await db('plays')
             .where({ gid: gameId })
             .orderBy('pn', 'asc')
             .first();
@@ -167,14 +168,48 @@ export const initGame: RequestHandler = async (req, res) => {
                 // Continue even if lineup tracking initialization fails
             }
             
-            // Return a modified version of the initial state
+            // Get the lineup data for the game
+            const lineupData = await getLineupData(gameId);
+            
+            // Get the first play data to determine runners on bases
+            const firstPlayData = firstPlay;
+            
+            // Return a modified version of the initial state with full game data
             const gameState: BaseballState = {
                 ...createEmptyBaseballState(),
                 gameId: gameId,
                 sessionId: sessionId,
                 game: {
                     ...createEmptyBaseballState().game,
-                    log: logEntries
+                    log: logEntries,
+                    // Add runners on bases from the first play
+                    onFirst: firstPlayData.runner1 || "",
+                    onSecond: firstPlayData.runner2 || "",
+                    onThird: firstPlayData.runner3 || ""
+                },
+                home: {
+                    ...createEmptyBaseballState().home,
+                    id: lineupData.homeTeam.id,
+                    displayName: lineupData.homeTeam.displayName,
+                    shortName: lineupData.homeTeam.shortName,
+                    currentPitcher: lineupData.homeTeam.currentPitcher,
+                    lineup: lineupData.homeTeam.lineup,
+                    // Set current batter to null initially for home team
+                    // It will be set in the frontend based on the current inning
+                    currentBatter: null
+                },
+                visitors: {
+                    ...createEmptyBaseballState().visitors,
+                    id: lineupData.visitingTeam.id,
+                    displayName: lineupData.visitingTeam.displayName,
+                    shortName: lineupData.visitingTeam.shortName,
+                    currentPitcher: lineupData.visitingTeam.currentPitcher,
+                    lineup: lineupData.visitingTeam.lineup,
+                    // Set the first batter in the lineup as the current batter for visitors
+                    // since the game starts with the visiting team batting
+                    currentBatter: lineupData.visitingTeam.lineup.length > 0 ? 
+                        `${lineupData.visitingTeam.lineup[0].firstName} ${lineupData.visitingTeam.lineup[0].lastName}`.trim() : 
+                        null
                 }
             };
             

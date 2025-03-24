@@ -1,6 +1,7 @@
 import { db } from '../../config/database';
 import { Player } from '../../../../common/types/BaseballTypes';
-import { LineupStateData, LineupPlayerData, LineupChangeData, PlayData } from './lineupTracking';
+import { PlayData } from '../../../../common/types/PlayData';
+import { LineupStateData, LineupPlayerData, LineupChangeData } from './lineupTracking';
 import { getLatestLineupState, saveLineupState, saveInitialLineup } from './lineupTracking';
 
 export class LineupChangeDetector {

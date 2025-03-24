@@ -1,5 +1,6 @@
 import Handlebars from 'handlebars';
 import { BaseballState } from '../../../../common/types/BaseballTypes';
+import { PlayData } from '../../../../common/types/PlayData';
 
 // Register custom helpers if needed
 Handlebars.registerHelper('inningDisplay', (inning: number) => {
@@ -28,7 +29,7 @@ Describe this play in a natural, engaging baseball announcer style. Include rele
 // Function to generate the next play prompt
 export function generateNextPlayPrompt(
   gameState: BaseballState, 
-  nextPlay: any, 
+  nextPlay: PlayData, 
   currentPlay: number
 ): string {
   // Determine current batter and pitcher
