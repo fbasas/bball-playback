@@ -225,6 +225,10 @@ const generatePlayCompletion = async (
         .map(line => line.trim());
 };
 
+/**
+ * Get the next play in a game sequence
+ * @returns {BaseballState} Response data contains a BaseballState object with the next play information
+ */
 export const getNextPlay: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
     const sessionId = req.headers['session-id'] as string;

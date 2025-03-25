@@ -1,8 +1,11 @@
 import { RequestHandler } from 'express';
 import { getAllLineupChanges, getLatestLineupState, getLineupStateForPlay } from '../../services/game/lineupTracking';
 
+import { LineupHistoryResponse, LineupState } from '../../../../common/types/ApiTypes';
+
 /**
  * Get all lineup changes for a game
+ * @returns {LineupHistoryResponse} Response data contains an array of LineupChange objects
  */
 export const getLineupHistory: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;
@@ -29,6 +32,7 @@ export const getLineupHistory: RequestHandler = async (req, res) => {
 
 /**
  * Get the lineup state for a specific play in a game
+ * @returns {LineupState} Response data contains a LineupState object for the specified play
  */
 export const getLineupStateForPlayHandler: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;
@@ -67,6 +71,7 @@ export const getLineupStateForPlayHandler: RequestHandler = async (req, res) => 
 
 /**
  * Get the latest lineup state for a game
+ * @returns {LineupState} Response data contains the most recent LineupState object for the game
  */
 export const getLatestLineupStateHandler: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;

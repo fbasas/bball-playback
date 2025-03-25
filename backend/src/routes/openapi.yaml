@@ -1,0 +1,624 @@
+openapi: 3.0.0
+info:
+  title: Baseball Playback API
+  description: API for baseball game playback and simulation
+  version: 1.0.0
+servers:
+  - url: /api
+    description: Base API path
+paths:
+  /game/createGame:
+    post:
+      summary: Create a new game
+      description: Creates a new game with the specified home and visiting teams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - homeTeamId
+                - visitingTeamId
+              properties:
+                homeTeamId:
+                  type: string
+                  description: ID of the home team
+                visitingTeamId:
+                  type: string
+                  description: ID of the visiting team
+      responses:
+        '200':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gameId:
+                    type: string
+                    description: Unique identifier for the game
+                  sessionId:
+                    type: string
+                    description: Unique session identifier
+                  gameState:
+                    $ref: '#/components/schemas/BaseballState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/init/{gameId}:
+    get:
+      summary: Initialize a game
+      description: Initializes a game with the first play data
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game to initialize
+          schema:
+            type: string
+        - name: skipLLM
+          in: query
+          required: false
+          description: Set to 'true' to skip LLM calls for testing
+          schema:
+            type: string
+            enum: ['true', 'false']
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Game initialized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseballState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/announceLineups/{gameId}:
+    get:
+      summary: Announce lineups
+      description: Generates lineup announcements for a game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: skipLLM
+          in: query
+          required: false
+          description: Set to 'true' to skip LLM calls for testing
+          schema:
+            type: string
+            enum: ['true', 'false']
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lineups announced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseballState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/next/{gameId}:
+    get:
+      summary: Get next play
+      description: Gets the next play in a game sequence
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: currentPlay
+          in: query
+          required: true
+          description: Index of the current play
+          schema:
+            type: integer
+            format: int32
+        - name: skipLLM
+          in: query
+          required: false
+          description: Set to 'true' to skip LLM calls for testing
+          schema:
+            type: string
+            enum: ['true', 'false']
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Next play retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseballState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Game or play not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/info/{gid}:
+    get:
+      summary: Get game info
+      description: Gets information about a game, including all plays
+      parameters:
+        - name: gid
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Game info retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plays:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PlayData'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/lineup/history/{gameId}:
+    get:
+      summary: Get lineup history
+      description: Gets all lineup changes for a game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lineup history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  changes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LineupChange'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/lineup/state/{gameId}/{playIndex}:
+    get:
+      summary: Get lineup state for play
+      description: Gets the lineup state for a specific play in a game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: playIndex
+          in: path
+          required: true
+          description: Index of the play
+          schema:
+            type: integer
+            format: int32
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lineup state retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineupState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Lineup state not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /game/lineup/latest/{gameId}:
+    get:
+      summary: Get latest lineup state
+      description: Gets the latest lineup state for a game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Latest lineup state retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineupState'
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Lineup state not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+    
+    BaseballState:
+      type: object
+      properties:
+        gameId:
+          type: string
+          description: Unique identifier for the game
+        sessionId:
+          type: string
+          description: Unique session identifier
+        game:
+          $ref: '#/components/schemas/GameState'
+        home:
+          $ref: '#/components/schemas/TeamState'
+        visitors:
+          $ref: '#/components/schemas/TeamState'
+        currentPlay:
+          type: integer
+          description: Current play index
+        gameType:
+          type: string
+          enum: ['replay', 'simulation']
+          description: Type of game
+    
+    GameState:
+      type: object
+      properties:
+        inning:
+          type: integer
+          description: Current inning number
+        isTopInning:
+          type: boolean
+          description: Whether it's the top of the inning
+        outs:
+          type: integer
+          description: Number of outs
+        log:
+          type: array
+          items:
+            type: string
+          description: Game log entries
+        onFirst:
+          type: string
+          description: Player ID on first base (if any)
+        onSecond:
+          type: string
+          description: Player ID on second base (if any)
+        onThird:
+          type: string
+          description: Player ID on third base (if any)
+    
+    TeamState:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Team ID
+        displayName:
+          type: string
+          description: Display name of the team
+        shortName:
+          type: string
+          description: Short name of the team
+        currentPitcher:
+          type: string
+          description: Name of the current pitcher
+        lineup:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+          description: Team lineup
+        stats:
+          $ref: '#/components/schemas/TeamStats'
+        currentBatter:
+          type: string
+          nullable: true
+          description: Name of the current batter
+    
+    Player:
+      type: object
+      properties:
+        position:
+          type: string
+          description: Player's position
+        firstName:
+          type: string
+          description: Player's first name
+        lastName:
+          type: string
+          description: Player's last name
+        retrosheet_id:
+          type: string
+          description: Retrosheet database ID
+    
+    TeamStats:
+      type: object
+      properties:
+        innings:
+          type: array
+          items:
+            type: integer
+          description: Runs scored in each inning
+        runs:
+          type: integer
+          description: Total runs
+        hits:
+          type: integer
+          description: Total hits
+        errors:
+          type: integer
+          description: Total errors
+    
+    LineupChange:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the lineup change
+        gameId:
+          type: string
+          description: Game ID
+        sessionId:
+          type: string
+          description: Session ID
+        playIndex:
+          type: integer
+          description: Play index when the change occurred
+        timestamp:
+          type: string
+          format: date-time
+          description: When the change occurred
+        changes:
+          type: string
+          description: JSON string of changes
+    
+    LineupState:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the lineup state
+        gameId:
+          type: string
+          description: Game ID
+        sessionId:
+          type: string
+          description: Session ID
+        playIndex:
+          type: integer
+          description: Play index for this state
+        timestamp:
+          type: string
+          format: date-time
+          description: When the state was recorded
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineupPlayer'
+          description: Players in the lineup
+    
+    LineupPlayer:
+      type: object
+      properties:
+        playerId:
+          type: string
+          description: Player ID
+        teamId:
+          type: string
+          description: Team ID
+        position:
+          type: string
+          description: Player's position
+        battingOrder:
+          type: integer
+          description: Player's position in the batting order
+        isCurrentPitcher:
+          type: boolean
+          description: Whether this player is the current pitcher
+        isCurrentBatter:
+          type: boolean
+          description: Whether this player is the current batter
+    
+    PlayData:
+      type: object
+      properties:
+        gid:
+          type: string
+          description: Game ID
+        pn:
+          type: integer
+          description: Play number
+        inning:
+          type: integer
+          description: Inning number
+        top_bot:
+          type: integer
+          description: 0 for top of inning, 1 for bottom of inning
+        batteam:
+          type: string
+          description: Batting team ID
+        pitteam:
+          type: string
+          description: Pitching team ID
+        batter:
+          type: string
+          description: Current batter ID
+        pitcher:
+          type: string
+          description: Current pitcher ID
+        outs_pre:
+          type: integer
+          description: Number of outs before the play
+        runner1:
+          type: string
+          nullable: true
+          description: Runner on first base (if any)
+        runner2:
+          type: string
+          nullable: true
+          description: Runner on second base (if any)
+        runner3:
+          type: string
+          nullable: true
+          description: Runner on third base (if any)

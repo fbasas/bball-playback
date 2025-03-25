@@ -1,6 +1,11 @@
 import { RequestHandler } from 'express';
 import { db } from '../../config/database';
+import { GameInfoResponse } from '../../../../common/types/ApiTypes';
 
+/**
+ * Get information about a game, including all plays
+ * @returns {GameInfoResponse} Response data contains an array of PlayData objects
+ */
 export const getGameInfo: RequestHandler = async (req, res) => {
     const { gid } = req.params;
     

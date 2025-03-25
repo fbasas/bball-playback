@@ -5,6 +5,10 @@ import { generateCompletion } from '../../services/openai';
 import { generateLineupAnnouncementPrompt } from '../../services/prompts';
 import { getLineupData } from '../../services/game/getLineupData';
 
+/**
+ * Generate lineup announcements for a game
+ * @returns {BaseballState} Response data contains a BaseballState object with lineup announcements
+ */
 export const announceLineups: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
     const sessionId = req.headers['session-id'] as string;

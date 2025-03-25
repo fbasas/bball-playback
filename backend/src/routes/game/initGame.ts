@@ -7,6 +7,10 @@ import { generateInitGamePrompt } from '../../services/prompts';
 import { getLineupData } from '../../services/game/getLineupData';
 import { saveInitialLineup } from '../../services/game/lineupTracking';
 
+/**
+ * Initialize a game with the first play data
+ * @returns {BaseballState} Response data contains a BaseballState object with initial game state
+ */
 export const initGame: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
     const sessionId = req.headers['session-id'] as string;

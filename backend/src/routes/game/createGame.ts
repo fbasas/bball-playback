@@ -1,12 +1,12 @@
 import { RequestHandler } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
+import { CreateGameRequest, CreateGameResponse } from '../../../../common/types/ApiTypes';
 
-interface CreateGameRequest {
-    homeTeamId: string;
-    visitingTeamId: string;
-}
-
+/**
+ * Create a new game with the specified home and visiting teams
+ * @returns {CreateGameResponse} Response data contains gameId, sessionId, and gameState properties
+ */
 export const createGame: RequestHandler = (req, res) => {
     const { homeTeamId, visitingTeamId } = req.body as CreateGameRequest;
     
