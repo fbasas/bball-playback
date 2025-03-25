@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import assert from 'assert';
 import { v4 as uuidv4 } from 'uuid';
 import { PlayData } from '../../../common/types/PlayData';
+import { SubstitutionResponse } from '../../../common/types/SubstitutionTypes';
+import { SimplifiedBaseballState } from '../../../common/types/SimplifiedBaseballState';
 
 // Load environment variables
 dotenv.config();
@@ -10,7 +12,7 @@ dotenv.config();
 // Configuration
 const API_BASE_URL = 'http://localhost:3001/api';
 const GAME_ID = 'NYA202410300'; // Test game ID
-const NUM_PLAYS = 5;
+const NUM_PLAYS = 25;
 let SESSION_ID = ''; // Will be set during test execution
 
 /**
@@ -200,6 +202,55 @@ async function validateCurrentBatterTracking(gameId: string, sessionId: string, 
 }
 
 /**
+ * Test the substitution endpoint
+ */
+async function testSubstitutionEndpoint(gameId: string, sessionId: string, currentPlay: number): Promise<void> {
+  console.log('\nTesting substitution endpoint...');
+  try {
+    // Call the substitution endpoint
+    const substitutionResponse = await axios.get(`${API_BASE_URL}/game/checkSubstitutions/${gameId}?currentPlay=${currentPlay}`, {
+      headers: {
+        'session-id': sessionId
+      }
+    });
+    
+    const substitutionData: SubstitutionResponse = substitutionResponse.data;
+    
+    console.log('Substitution endpoint response:');
+    console.log(`- Has pitching change: ${substitutionData.hasPitchingChange}`);
+    console.log(`- Has pinch hitter: ${substitutionData.hasPinchHitter}`);
+    console.log(`- Has pinch runner: ${substitutionData.hasPinchRunner}`);
+    console.log(`- Total substitutions: ${substitutionData.substitutions.length}`);
+    
+    // Display details of each substitution
+    if (substitutionData.substitutions.length > 0) {
+      console.log('\nSubstitution details:');
+      substitutionData.substitutions.forEach((sub, index) => {
+        console.log(`\nSubstitution #${index + 1}:`);
+        console.log(`- Type: ${sub.type}`);
+        console.log(`- Description: ${sub.description}`);
+        console.log(`- Player In: ${sub.playerIn.playerName} (${sub.playerIn.playerId})`);
+        console.log(`- Player Out: ${sub.playerOut.playerName} (${sub.playerOut.playerId})`);
+        if (sub.playerIn.position) {
+          console.log(`- Position: ${sub.playerIn.position}`);
+        }
+      });
+    } else {
+      console.log('No substitutions detected between plays.');
+    }
+    
+    return;
+  } catch (error: any) {
+    console.error('Error testing substitution endpoint:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    }
+    return;
+  }
+}
+
+/**
  * Validate position change records
  */
 async function validatePositionChanges(gameId: string, sessionId: string) {
@@ -241,27 +292,7 @@ async function validatePositionChanges(gameId: string, sessionId: string) {
 /**
  * Log the current game state
  */
-function logGameState(nextPlayData: {
-  currentPlay: number;
-  game: {
-    inning: number;
-    isTopInning: boolean;
-    outs: number;
-    onFirst: string;
-    onSecond: string;
-    onThird: string;
-  };
-  home: {
-    currentBatter: string;
-    currentPitcher: string;
-    lineup: Array<{lastName: string}>;
-  };
-  visitors: {
-    currentBatter: string;
-    currentPitcher: string;
-    lineup: Array<{lastName: string}>;
-  };
-}) {
+function logGameState(nextPlayData: SimplifiedBaseballState) {
   console.log(`- Current play: ${nextPlayData.currentPlay - 1} -> Next play: ${nextPlayData.currentPlay}`);
   console.log(`- Inning: ${nextPlayData.game.inning} (${nextPlayData.game.isTopInning ? 'Top' : 'Bottom'})`);
   console.log(`- Outs: ${nextPlayData.game.outs}`);
@@ -278,22 +309,18 @@ function logGameState(nextPlayData: {
   console.log(`- On second: ${nextPlayData.game.onSecond}`);
   console.log(`- On third: ${nextPlayData.game.onThird}`);
   
-  // Display home team lineup with player IDs only (one line)
-  console.log(`- Home Team Lineup:`);
-  if (nextPlayData.home.lineup && nextPlayData.home.lineup.length > 0) {
-    const homeIds = nextPlayData.home.lineup.map((player: any) => player.lastName);
-    console.log(`  ${homeIds.join(', ')}`);
-  } else {
-    console.log(`  No lineup data available`);
-  }
+  // SimplifiedBaseballState doesn't include lineup information
+  console.log(`- Home Team: ${nextPlayData.home.displayName} (${nextPlayData.home.shortName})`);
+  console.log(`- Visiting Team: ${nextPlayData.visitors.displayName} (${nextPlayData.visitors.shortName})`);
   
-  // Display visiting team lineup with player IDs only (one line)
-  console.log(`- Visiting Team Lineup:`);
-  if (nextPlayData.visitors.lineup && nextPlayData.visitors.lineup.length > 0) {
-    const visitorIds = nextPlayData.visitors.lineup.map((player: any) => player.lastName);
-    console.log(`  ${visitorIds.join(', ')}`);
+  // Log the play-by-play commentary
+  if (nextPlayData.game.log && nextPlayData.game.log.length > 0) {
+    console.log('\n- Play-by-play commentary:');
+    nextPlayData.game.log.forEach((entry, index) => {
+      console.log(`  ${index + 1}. ${entry}`);
+    });
   } else {
-    console.log(`  No lineup data available`);
+    console.log('\n- No play-by-play commentary available');
   }
 }
 
@@ -331,25 +358,59 @@ async function testLineupTracking() {
     // Step 4: Make a few next play requests to trigger lineup changes
     console.log('\nStep 4: Making next play requests to trigger lineup changes...');
     let currentPlay = 1; // Start from the beginning
+    let previousPlay = 0;
     const numPlaysToProcess = NUM_PLAYS;
     let playsProcessed = 0;
     
     for (let i = 0; i < numPlaysToProcess; i++) {
         console.log(`\nProcessing play ${i + 1}/${numPlaysToProcess}...`);
       try {
-        // Add skipLLM=true query parameter to skip LLM calls during testing
-        const nextPlayResponse = await axios.get(`${API_BASE_URL}/game/next/${GAME_ID}?currentPlay=${currentPlay}&skipLLM=true`, {
-          headers: {
-            'session-id': SESSION_ID
+        // Check for substitutions before getting the next play (except for the first play)
+        if (i > 0) {
+          console.log(`\nChecking for substitutions between plays ${previousPlay} and ${currentPlay}...`);
+          try {
+            await testSubstitutionEndpoint(GAME_ID, SESSION_ID, previousPlay);
+          } catch (error) {
+            console.error('Error checking substitutions:', error);
           }
-        });
-        const nextPlayData = nextPlayResponse.data;
+        }
         
-        logGameState(nextPlayData);
-        
-        // Update current play for the next iteration
-        currentPlay = nextPlayData.currentPlay;
-        playsProcessed++;
+        // Add skipLLM=true query parameter to skip LLM calls during testing
+        console.log(`\nMaking next play request for play ${currentPlay}...`);
+        let nextPlayData;
+        try {
+          const nextPlayResponse = await axios.get(`${API_BASE_URL}/game/next/${GAME_ID}?currentPlay=${currentPlay}&skipLLM=true`, {
+            headers: {
+              'session-id': SESSION_ID
+            }
+          });
+          console.log(`Next play request successful for play ${currentPlay}`);
+          nextPlayData = nextPlayResponse.data;
+          
+          console.log(`\nGame state after play ${currentPlay}:`);
+          logGameState(nextPlayData);
+          
+          // Update current play for the next iteration
+          previousPlay = currentPlay;
+          currentPlay = nextPlayData.currentPlay;
+          playsProcessed++;
+        } catch (error: any) {
+          console.error(`\nError making next play request for play ${currentPlay}:`);
+          if (error.response) {
+            console.error(`Status: ${error.response.status}`);
+            console.error(`Response data:`, error.response.data);
+            
+            // If we get a 404, it might be because the play doesn't exist
+            if (error.response.status === 404) {
+              console.error(`Play ${currentPlay} not found. This might be due to a substitution changing the play sequence.`);
+            }
+          } else if (error.request) {
+            console.error('No response received from server');
+          } else {
+            console.error(`Error message: ${error.message}`);
+          }
+          throw error; // Re-throw to be caught by the outer try/catch
+        }
       } catch (error: any) {
         if (error.response && error.response.status === 404) {
           console.log('✅ No more plays available (received 404). Moving to next phase.');
@@ -370,6 +431,14 @@ async function testLineupTracking() {
     }
     
     console.log(`\nCompleted processing ${playsProcessed} plays.`);
+    
+    // Check for substitutions one last time after all plays
+    console.log(`\nChecking for substitutions after final play ${currentPlay - 1}...`);
+    try {
+      await testSubstitutionEndpoint(GAME_ID, SESSION_ID, currentPlay - 1);
+    } catch (error) {
+      console.error('Error checking substitutions:', error);
+    }
     
     // Step 5: Validate current batter tracking
     console.log('\nStep 5: Validating current batter tracking...');
