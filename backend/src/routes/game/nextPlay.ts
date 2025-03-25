@@ -1,5 +1,6 @@
 import { Request, RequestHandler } from 'express';
 import { BaseballState, createEmptyBaseballState } from '../../../../common/types/BaseballTypes';
+import { SimplifiedBaseballState } from '../../../../common/types/SimplifiedBaseballState';
 import { PlayData, PlayDataResult } from '../../../../common/types/PlayData';
 import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
@@ -227,7 +228,7 @@ const generatePlayCompletion = async (
 
 /**
  * Get the next play in a game sequence
- * @returns {BaseballState} Response data contains a BaseballState object with the next play information
+ * @returns {SimplifiedBaseballState} Response data contains a SimplifiedBaseballState object with the next play information
  */
 export const getNextPlay: RequestHandler = async (req, res) => {
     const gameId = req.params.gameId;
@@ -244,28 +245,32 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         
         const logEntries = await generatePlayCompletion(currentState, nextPlayData, currentPlay, skipLLM, gameId);
         
-        const updatedState: BaseballState = {
-            ...currentState,
+        // Create a simplified response
+        const simplifiedState: SimplifiedBaseballState = {
+            gameId: currentState.gameId,
+            sessionId: currentState.sessionId,
             game: {
-                ...currentState.game,
-                log: logEntries,
                 inning: nextPlayData.inning,
                 isTopInning: nextPlayData.top_bot === 0,
-                outs: nextPlayData.outs_pre
+                outs: nextPlayData.outs_pre,
+                log: logEntries,
+                onFirst: nextPlayData.runner1 || '',
+                onSecond: nextPlayData.runner2 || '',
+                onThird: nextPlayData.runner3 || ''
             },
             home: {
-                ...currentState.home,
                 id: nextPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam,
+                displayName: currentState.home.displayName,
+                shortName: currentState.home.shortName,
                 currentBatter: currentState.home.currentBatter,
-                currentPitcher: currentState.home.currentPitcher,
-                lineup: currentState.home.lineup
+                currentPitcher: currentState.home.currentPitcher
             },
             visitors: {
-                ...currentState.visitors,
                 id: nextPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam,
+                displayName: currentState.visitors.displayName,
+                shortName: currentState.visitors.shortName,
                 currentBatter: currentState.visitors.currentBatter,
-                currentPitcher: currentState.visitors.currentPitcher,
-                lineup: currentState.visitors.lineup
+                currentPitcher: currentState.visitors.currentPitcher
             },
             currentPlay: nextPlayData.pn
         };
@@ -286,7 +291,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             console.error('Error tracking lineup changes:', error instanceof Error ? error.message : error);
         }
         
-        res.json(updatedState);
+        res.json(simplifiedState);
         } catch (error: unknown) {
             console.error('Error:', error);
             const status = error instanceof Error && error.message.includes('not found') ? 404 : 500;
