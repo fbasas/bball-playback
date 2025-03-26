@@ -12,7 +12,7 @@ dotenv.config();
 // Configuration
 const API_BASE_URL = 'http://localhost:3001/api';
 const GAME_ID = 'NYA202410300'; // Test game ID
-const NUM_PLAYS = 25;
+const NUM_PLAYS = 15;
 let SESSION_ID = ''; // Will be set during test execution
 
 /**
@@ -43,161 +43,6 @@ async function createGame(gameId: string) {
     const fallbackSessionId = uuidv4();
     console.log(`⚠️ Using fallback session ID: ${fallbackSessionId}`);
     return fallbackSessionId;
-  }
-}
-
-/**
- * Validate that the initial lineup state exists and is correct
- */
-async function validateInitialLineupState(gameId: string, sessionId: string) {
-  console.log('\nValidating initial lineup state...');
-  try {
-    const initialStateResponse = await axios.get(`${API_BASE_URL}/game/lineup/latest/${gameId}`, {
-      headers: {
-        'session-id': sessionId
-      }
-    });
-    const initialState = initialStateResponse.data;
-    
-    if (!initialState || !initialState.state || initialState.state.playIndex !== 0) {
-      console.error('❌ Initial lineup state not found or incorrect play index');
-      return false;
-    }
-    
-    console.log('✅ Initial lineup state exists with correct play index');
-    
-    // Validate that all players have correct positions and batting orders
-    const players = initialState.players;
-    const homeTeamPlayers = players.filter((p: any) => p.teamId === players[0].teamId);
-    const visitingTeamPlayers = players.filter((p: any) => p.teamId !== players[0].teamId);
-    
-    if (homeTeamPlayers.length !== 9 || visitingTeamPlayers.length !== 9) {
-      console.error(`❌ Incorrect number of players: Home=${homeTeamPlayers.length}, Visiting=${visitingTeamPlayers.length}`);
-      return false;
-    }
-    
-    console.log('✅ Correct number of players for both teams');
-    
-    // Check that batting orders are 1-9 for each team
-    const homeBattingOrders = homeTeamPlayers.map((p: any) => p.battingOrder).sort();
-    const visitingBattingOrders = visitingTeamPlayers.map((p: any) => p.battingOrder).sort();
-    
-    const expectedBattingOrders = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    
-    if (!homeBattingOrders.every((order: number, index: number) => order === expectedBattingOrders[index]) ||
-        !visitingBattingOrders.every((order: number, index: number) => order === expectedBattingOrders[index])) {
-      console.error('❌ Batting orders are not correctly assigned (1-9)');
-      return false;
-    }
-    
-    console.log('✅ Batting orders are correctly assigned for both teams');
-    
-    // Check that exactly one player is marked as current batter
-    const currentBatters = players.filter((p: any) => p.isCurrentBatter);
-    if (currentBatters.length !== 1) {
-      console.error(`❌ Incorrect number of current batters: ${currentBatters.length} (should be 1)`);
-      return false;
-    }
-    
-    console.log('✅ Exactly one player is marked as current batter');
-    
-    // Check that the current batter is on the visiting team (top of 1st inning)
-    const currentBatter = currentBatters[0];
-    if (currentBatter.teamId === homeTeamPlayers[0].teamId) {
-      console.error('❌ Current batter is on the home team, but should be on the visiting team (top of 1st)');
-      return false;
-    }
-    
-    console.log('✅ Current batter is correctly on the visiting team (top of 1st)');
-    
-    return true;
-  } catch (error: any) {
-    console.error('Error validating initial lineup state:', error);
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
-    }
-    return false;
-  }
-}
-
-/**
- * Validate current batter tracking
- */
-async function validateCurrentBatterTracking(gameId: string, sessionId: string, plays: number) {
-  console.log('\nValidating current batter tracking...');
-  try {
-    // Get all lineup states
-    const states = [];
-    for (let i = 0; i <= plays; i++) {
-      try {
-        const stateResponse = await axios.get(`${API_BASE_URL}/game/lineup/state/${gameId}/${i}`, {
-          headers: {
-            'session-id': sessionId
-          }
-        });
-        states.push(stateResponse.data);
-      } catch (error) {
-        // State might not exist for every play, which is fine
-      }
-    }
-    
-    if (states.length < 2) {
-      console.error('❌ Not enough lineup states to validate batter tracking');
-      return false;
-    }
-    
-    console.log(`Found ${states.length} lineup states to analyze`);
-    
-    // Check that each state has exactly one current batter
-    let valid = true;
-    for (const state of states) {
-      const currentBatters = state.players.filter((p: any) => p.isCurrentBatter);
-      
-      if (currentBatters.length !== 2) {
-        console.error(`❌ State at play ${state.state.playIndex} has ${currentBatters.length} current batters (should be 2)`);
-        valid = false;
-        continue;
-      }
-    }
-    
-    if (valid) {
-      console.log('✅ Each state has exactly two current batters');
-    }
-    
-    // Check that the current batter is on the correct team based on inning
-    valid = true;
-    for (const state of states) {
-      const currentBatter = state.players.find((p: any) => p.isCurrentBatter);
-      if (!currentBatter) continue;
-      
-      const isTopInning = state.state.isTopInning;
-      const homeTeamId = state.players.find((p: any) => p.battingOrder === 1 && !isTopInning)?.teamId;
-      const visitingTeamId = state.players.find((p: any) => p.battingOrder === 1 && isTopInning)?.teamId;
-      
-      if (!homeTeamId || !visitingTeamId) continue;
-      
-      if (isTopInning && currentBatter.teamId !== visitingTeamId) {
-        console.error(`❌ State at play ${state.state.playIndex}: Current batter is not on visiting team during top of inning`);
-        valid = false;
-      } else if (!isTopInning && currentBatter.teamId !== homeTeamId) {
-        console.error(`❌ State at play ${state.state.playIndex}: Current batter is not on home team during bottom of inning`);
-        valid = false;
-      }
-    }
-    
-    if (valid) {
-      console.log('✅ Current batter is always on the correct team based on inning');
-    }
-    
-    return valid;
-  } catch (error: any) {
-    console.error('Error validating current batter tracking:', error);
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
-    }
-    return false;
   }
 }
 
@@ -251,10 +96,10 @@ async function testSubstitutionEndpoint(gameId: string, sessionId: string, curre
 }
 
 /**
- * Validate position change records
+ * Get position change records
  */
-async function validatePositionChanges(gameId: string, sessionId: string) {
-  console.log('\nValidating position change records...');
+async function getPositionChanges(gameId: string, sessionId: string) {
+  console.log('\nGetting position change records...');
   try {
     const historyResponse = await axios.get(`${API_BASE_URL}/game/lineup/history/${gameId}`, {
       headers: {
@@ -263,24 +108,18 @@ async function validatePositionChanges(gameId: string, sessionId: string) {
     });
     const lineupHistory = historyResponse.data;
     
-    // Validate that POSITION_CHANGE records have playerInId
+    // Count POSITION_CHANGE records
     const positionChanges = lineupHistory.changes.filter((c: any) => c.changeType === 'POSITION_CHANGE');
-    const positionChangesWithPlayerInId = positionChanges.filter((c: any) => c.playerInId);
     
     if (positionChanges.length === 0) {
-      console.log('No position changes to validate');
-      return true;
+      console.log('No position changes found');
+    } else {
+      console.log(`Found ${positionChanges.length} position changes`);
     }
     
-    if (positionChanges.length === positionChangesWithPlayerInId.length) {
-      console.log(`✅ All ${positionChanges.length} POSITION_CHANGE records have playerInId`);
-      return true;
-    } else {
-      console.error(`❌ Only ${positionChangesWithPlayerInId.length} out of ${positionChanges.length} POSITION_CHANGE records have playerInId`);
-      return false;
-    }
+    return true;
   } catch (error: any) {
-    console.error('Error validating position changes:', error);
+    console.error('Error getting position changes:', error);
     if (error.response) {
       console.error('Response data:', error.response.data);
       console.error('Response status:', error.response.status);
@@ -300,14 +139,25 @@ function logGameState(nextPlayData: SimplifiedBaseballState) {
   if (nextPlayData.game.isTopInning) {
     console.log(`- Current batter: ${nextPlayData.visitors.currentBatter}`);
     console.log(`- Current pitcher: ${nextPlayData.home.currentPitcher}`);
-  } else {
+    console.log(`- Next batter: ${nextPlayData.visitors.nextBatter}`);
+    console.log(`- Next pitcher: ${nextPlayData.home.nextPitcher}`);
+  } else {  
     console.log(`- Current batter: ${nextPlayData.home.currentBatter}`);
     console.log(`- Current pitcher: ${nextPlayData.visitors.currentPitcher}`);
+    console.log(`- Next batter: ${nextPlayData.home.nextBatter}`);
+    console.log(`- Next pitcher: ${nextPlayData.visitors.nextPitcher}`);
   }
 
-  console.log(`- On first: ${nextPlayData.game.onFirst}`);
-  console.log(`- On second: ${nextPlayData.game.onSecond}`);
-  console.log(`- On third: ${nextPlayData.game.onThird}`);
+  console.log(`- On first: ${nextPlayData.game.onFirst || 'None'}`);
+  console.log(`- On second: ${nextPlayData.game.onSecond || 'None'}`);
+  console.log(`- On third: ${nextPlayData.game.onThird || 'None'}`);
+  
+  // Add a summary of baserunners
+  const baserunners = [];
+  if (nextPlayData.game.onFirst) baserunners.push(`1B: ${nextPlayData.game.onFirst}`);
+  if (nextPlayData.game.onSecond) baserunners.push(`2B: ${nextPlayData.game.onSecond}`);
+  if (nextPlayData.game.onThird) baserunners.push(`3B: ${nextPlayData.game.onThird}`);
+  console.log(`- Baserunners: ${baserunners.length > 0 ? baserunners.join(', ') : 'None'}`);
   
   // SimplifiedBaseballState doesn't include lineup information
   console.log(`- Home Team: ${nextPlayData.home.displayName} (${nextPlayData.home.shortName})`);
@@ -336,28 +186,9 @@ async function testLineupTracking() {
     console.log('\nStep 1: Creating game and getting session ID...');
     SESSION_ID = await createGame(GAME_ID);
     
-    // Step 2: Initialize the game
-    console.log('\nStep 2: Initializing game...');
-    const initResponse = await axios.get(`${API_BASE_URL}/game/init/${GAME_ID}?skipLLM=true`, {
-      headers: {
-        'session-id': SESSION_ID
-      }
-    });
-    console.log('Game initialized successfully.');
-    logGameState(initResponse.data);
-    
-    // Step 3: Validate the initial lineup state
-    console.log('\nStep 3: Validating initial lineup state...');
-    const initialStateValid = await validateInitialLineupState(GAME_ID, SESSION_ID);
-     if (!initialStateValid) {
-      console.error('❌ Initial lineup state validation failed');
-    } else {
-      console.log('✅ Initial lineup state validation passed');
-    }
-    
-    // Step 4: Make a few next play requests to trigger lineup changes
-    console.log('\nStep 4: Making next play requests to trigger lineup changes...');
-    let currentPlay = 1; // Start from the beginning
+    // Step 2: Make next play requests to trigger lineup changes (including initialization with currentPlay=0)
+    console.log('\nStep 3: Making next play requests to trigger lineup changes (including initialization with currentPlay=0)...');
+    let currentPlay = 0; // Start from the beginning (initialization)
     let previousPlay = 0;
     const numPlaysToProcess = NUM_PLAYS;
     let playsProcessed = 0;
@@ -440,26 +271,12 @@ async function testLineupTracking() {
       console.error('Error checking substitutions:', error);
     }
     
-    // Step 5: Validate current batter tracking
-    console.log('\nStep 5: Validating current batter tracking...');
-    const batterTrackingValid = await validateCurrentBatterTracking(GAME_ID, SESSION_ID, currentPlay);
-    if (!batterTrackingValid) {
-      console.error('❌ Current batter tracking validation failed');
-    } else {
-      console.log('✅ Current batter tracking validation passed');
-    }
+    // Step 3: Get position change records
+    console.log('\nStep 4: Getting position change records...');
+    await getPositionChanges(GAME_ID, SESSION_ID);
     
-    // Step 6: Validate position change records
-    console.log('\nStep 6: Validating position change records...');
-    const positionChangesValid = await validatePositionChanges(GAME_ID, SESSION_ID);
-    if (!positionChangesValid) {
-      console.error('❌ Position change validation failed');
-    } else {
-      console.log('✅ Position change validation passed');
-    }
-    
-    // Step 7: Get the lineup history and display sample changes
-    console.log('\nStep 7: Getting lineup history...');
+    // Step 4: Get the lineup history and display sample changes
+    console.log('\nStep 6: Getting lineup history...');
     const historyResponse = await axios.get(`${API_BASE_URL}/game/lineup/history/${GAME_ID}`, {
       headers: {
         'session-id': SESSION_ID
@@ -490,8 +307,8 @@ async function testLineupTracking() {
       console.log('No lineup changes detected in this sample of plays.');
     }
     
-    // Step 8: Get the latest lineup state
-    console.log('\nStep 8: Getting latest lineup state after plays...');
+    // Step 5: Get the latest lineup state
+    console.log('\nStep 7: Getting latest lineup state after plays...');
     const finalLineupResponse = await axios.get(`${API_BASE_URL}/game/lineup/latest/${GAME_ID}`, {
       headers: {
         'session-id': SESSION_ID

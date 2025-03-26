@@ -21,6 +21,8 @@ export interface SimplifiedBaseballState {
     shortName: string;
     currentBatter: string | null;
     currentPitcher: string | null;
+    nextBatter: string | null;
+    nextPitcher: string | null;
   };
   visitors: {
     id: string;
@@ -28,6 +30,8 @@ export interface SimplifiedBaseballState {
     shortName: string;
     currentBatter: string | null;
     currentPitcher: string | null;
+    nextBatter: string | null;
+    nextPitcher: string | null;
   };
   currentPlay: number;
 }

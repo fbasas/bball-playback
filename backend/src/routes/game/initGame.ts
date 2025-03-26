@@ -10,8 +10,11 @@ import { saveInitialLineup } from '../../services/game/lineupTracking';
 /**
  * Initialize a game with the first play data
  * @returns {BaseballState} Response data contains a BaseballState object with initial game state
+ * @deprecated Use nextPlay endpoint with currentPlay=0 instead
  */
 export const initGame: RequestHandler = async (req, res) => {
+    console.warn('DEPRECATED: The initGame endpoint is deprecated. Please use nextPlay with currentPlay=0 instead.');
+    
     const gameId = req.params.gameId;
     const sessionId = req.headers['session-id'] as string;
     const skipLLM = req.query.skipLLM === 'true';
@@ -187,9 +190,9 @@ export const initGame: RequestHandler = async (req, res) => {
                     ...createEmptyBaseballState().game,
                     log: logEntries,
                     // Add runners on bases from the first play
-                    onFirst: firstPlayData.runner1 || "",
-                    onSecond: firstPlayData.runner2 || "",
-                    onThird: firstPlayData.runner3 || ""
+                    onFirst: firstPlayData.br1_pre || "",
+                    onSecond: firstPlayData.br2_pre || "",
+                    onThird: firstPlayData.br3_pre || ""
                 },
                 home: {
                     ...createEmptyBaseballState().home,

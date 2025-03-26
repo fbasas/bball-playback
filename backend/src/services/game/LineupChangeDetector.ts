@@ -283,12 +283,65 @@ export class LineupChangeDetector {
     return newPlayers;
   }
 
-  private async updateCurrentBatter(): Promise<LineupPlayerData[]> {
+  private async updateCurrentBatterAndPitcher(): Promise<LineupPlayerData[]> {
     if (!this.latestState) return [];
     
     const battingTeamId = this.nextPlay.batteam;
     const fieldingTeamId = this.nextPlay.pitteam;
     const newPlayers = [...this.latestState.players];
+    
+    // No debug logging in production code
+    
+    // Update current pitcher for both teams
+    const fieldingTeamPitcher = this.nextPlay.pitcher;
+    
+    // First pass: find if the pitcher exists in the lineup
+    let pitcherFoundInFieldingTeam = false;
+    
+    newPlayers.forEach((player) => {
+      if (player.teamId === fieldingTeamId && player.playerId === fieldingTeamPitcher) {
+        pitcherFoundInFieldingTeam = true;
+      }
+    });
+    
+    // Second pass: reset all pitcher flags
+    newPlayers.forEach((player, index) => {
+      newPlayers[index] = {
+        ...player,
+        isCurrentPitcher: false
+      };
+    });
+    
+    // Third pass: set the current pitcher for the fielding team
+    newPlayers.forEach((player, index) => {
+      if (player.teamId === fieldingTeamId && player.playerId === fieldingTeamPitcher) {
+        newPlayers[index] = {
+          ...newPlayers[index],
+          isCurrentPitcher: true
+        };
+      }
+    });
+    
+    // If the pitcher wasn't found in the lineup, add them
+    if (!pitcherFoundInFieldingTeam) {
+      // Get the pitcher's name
+      const pitcherName = await this.getPlayerName(fieldingTeamPitcher);
+      
+      // Find the batting order for the new pitcher (use the highest batting order + 1)
+      const fieldingTeamPlayers = this.latestState.players.filter(p => p.teamId === fieldingTeamId);
+      const maxBattingOrder = Math.max(...fieldingTeamPlayers.map(p => p.battingOrder));
+      const newBattingOrder = maxBattingOrder + 1;
+      
+      // Add the pitcher to the lineup
+      newPlayers.push({
+        teamId: fieldingTeamId,
+        playerId: fieldingTeamPitcher,
+        battingOrder: newBattingOrder,
+        position: 'P',
+        isCurrentBatter: false,
+        isCurrentPitcher: true
+      });
+    }
     
     if (this.isHalfInningChange) {
       const previousBattingTeam = this.currentPlay.batteam;
@@ -311,25 +364,35 @@ export class LineupChangeDetector {
       newPlayers.forEach((player, index) => {
         if (player.teamId === previousBattingTeam) {
           // Update the previous batting team's current batter
+          const willBeCurrentBatter = player.playerId === previousBattingOrder[nextBatterIndex]?.playerId;
+          
+          if (this.currentPlay.pn === 3 && this.nextPlay.pn === 4 && willBeCurrentBatter) {
+            console.log(`[DEBUG] Play 3->4: Setting player ${player.playerId} as current batter for previous batting team ${previousBattingTeam}`);
+          }
+          
           newPlayers[index] = {
-            ...player,
-            isCurrentBatter: player.playerId === previousBattingOrder[nextBatterIndex]?.playerId
+            ...newPlayers[index],
+            isCurrentBatter: willBeCurrentBatter
           };
         } else if (player.teamId === battingTeamId) {
           // If we already have a current batter for this team, keep it
           // Otherwise, start with the first batter in the order
-          if (currentFieldingTeamBatter) {
-            newPlayers[index] = {
-              ...player,
-              isCurrentBatter: player.playerId === currentFieldingTeamBatter.playerId
-            };
+          let willBeCurrentBatter = false;
+          
+          if (player.playerId === this.nextPlay.batter) {
+            // Use the actual batter from the next play data
+            willBeCurrentBatter = true;
+          } else if (currentFieldingTeamBatter) {
+            willBeCurrentBatter = player.playerId === currentFieldingTeamBatter.playerId;
           } else {
             const battingOrder = currentBattingOrder.find(p => p.playerId === player.playerId)?.battingOrder;
-            newPlayers[index] = {
-              ...player,
-              isCurrentBatter: battingOrder === 1
-            };
+            willBeCurrentBatter = battingOrder === 1;
           }
+          
+          newPlayers[index] = {
+            ...newPlayers[index],
+            isCurrentBatter: willBeCurrentBatter
+          };
         }
       });
       
@@ -354,15 +417,19 @@ export class LineupChangeDetector {
         // Update only the batting team's current batter, preserve the fielding team's current batter
         newPlayers.forEach((player, index) => {
           if (player.teamId === battingTeamId) {
+            const willBeCurrentBatter = player.playerId === currentBattingOrder[nextBatterIndex].playerId;
+      
             newPlayers[index] = {
               ...player,
-              isCurrentBatter: player.playerId === currentBattingOrder[nextBatterIndex].playerId
+              isCurrentBatter: willBeCurrentBatter
             };
           } else if (player.teamId === fieldingTeamId) {
             // Preserve the fielding team's current batter
+            const willBeCurrentBatter = fieldingTeamCurrentBatter ? player.playerId === fieldingTeamCurrentBatter.playerId : false;
+
             newPlayers[index] = {
               ...player,
-              isCurrentBatter: fieldingTeamCurrentBatter ? player.playerId === fieldingTeamCurrentBatter.playerId : false
+              isCurrentBatter: willBeCurrentBatter
             };
           }
         });
@@ -437,9 +504,9 @@ export class LineupChangeDetector {
       return await saveLineupState(this.createStateData(), newPlayers, this.changes);
     }
     
-    // Update current batter even if no other changes
+    // Update current batter and pitcher even if no other changes
     if (this.latestState) {
-      const newPlayers = await this.updateCurrentBatter();
+      const newPlayers = await this.updateCurrentBatterAndPitcher();
       return await saveLineupState(this.createStateData(), newPlayers, []);
     }
 

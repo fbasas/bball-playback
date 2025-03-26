@@ -368,6 +368,23 @@ export async function saveInitialLineup(
     // Create player data for both teams
     const players: LineupPlayerData[] = [];
     
+    // Get the first play to determine the initial state
+    const firstPlay = await db('plays')
+      .where({ gid: gameId })
+      .orderBy('pn', 'asc')
+      .first();
+    
+    if (!firstPlay) {
+      throw new Error(`No plays found for game ${gameId}`);
+    }
+    
+    // Determine which team is batting and which is pitching in the first play
+    const initialBattingTeamId = firstPlay.batteam;
+    const initialPitchingTeamId = firstPlay.pitteam;
+    
+    console.log(`[LINEUP] Initial batting team: ${initialBattingTeamId}, Initial pitching team: ${initialPitchingTeamId}`);
+    console.log(`[LINEUP] Initial batter: ${firstPlay.batter}, Initial pitcher: ${firstPlay.pitcher}`);
+    
     // Add home team players
     homeTeam.lineup.forEach((player, index) => {
       // Use the player's retrosheet_id
@@ -375,14 +392,25 @@ export async function saveInitialLineup(
         throw new Error(`Retrosheet ID is required for home team player at position ${index + 1}`);
       }
       
+      const isCurrentBatter = homeTeam.id === initialBattingTeamId && player.retrosheet_id === firstPlay.batter;
+      const isCurrentPitcher = homeTeam.id === initialPitchingTeamId && player.retrosheet_id === firstPlay.pitcher;
+      
       players.push({
         teamId: homeTeam.id,
         playerId: player.retrosheet_id,
         battingOrder: index + 1,
         position: player.position,
-        isCurrentBatter: index === 0, // First batter in the lineup is the current batter for home team
-        isCurrentPitcher: player.position === 'P' || `${player.firstName} ${player.lastName}` === homeTeam.currentPitcher
+        isCurrentBatter: isCurrentBatter,
+        isCurrentPitcher: isCurrentPitcher
       });
+      
+      if (isCurrentBatter) {
+        console.log(`[LINEUP] Set ${player.retrosheet_id} (${player.firstName} ${player.lastName}) as current batter for home team`);
+      }
+      
+      if (isCurrentPitcher) {
+        console.log(`[LINEUP] Set ${player.retrosheet_id} (${player.firstName} ${player.lastName}) as current pitcher for home team`);
+      }
     });
     
     // Add visiting team players
@@ -392,14 +420,25 @@ export async function saveInitialLineup(
         throw new Error(`Retrosheet ID is required for visiting team player at position ${index + 1}`);
       }
       
+      const isCurrentBatter = visitingTeam.id === initialBattingTeamId && player.retrosheet_id === firstPlay.batter;
+      const isCurrentPitcher = visitingTeam.id === initialPitchingTeamId && player.retrosheet_id === firstPlay.pitcher;
+      
       players.push({
         teamId: visitingTeam.id,
         playerId: player.retrosheet_id,
         battingOrder: index + 1,
         position: player.position,
-        isCurrentBatter: index === 0, // First batter in the lineup is the current batter for visiting team
-        isCurrentPitcher: player.position === 'P' || `${player.firstName} ${player.lastName}` === visitingTeam.currentPitcher
+        isCurrentBatter: isCurrentBatter,
+        isCurrentPitcher: isCurrentPitcher
       });
+      
+      if (isCurrentBatter) {
+        console.log(`[LINEUP] Set ${player.retrosheet_id} (${player.firstName} ${player.lastName}) as current batter for visiting team`);
+      }
+      
+      if (isCurrentPitcher) {
+        console.log(`[LINEUP] Set ${player.retrosheet_id} (${player.firstName} ${player.lastName}) as current pitcher for visiting team`);
+      }
     });
     
     // Create initial lineup change

@@ -146,7 +146,7 @@ export class SubstitutionDetector {
    */
   private async detectPinchRunner(): Promise<void> {
     // Check for runner changes that aren't explained by play outcomes
-    const bases = ['runner1', 'runner2', 'runner3'] as const;
+    const bases = ['br1_pre', 'br2_pre', 'br3_pre'] as const;
     
     for (const base of bases) {
       const currentRunner = this.currentPlay[base];
@@ -170,7 +170,7 @@ export class SubstitutionDetector {
             playerName: oldRunnerName,
             teamId
           },
-          description: `Pinch runner: ${newRunnerName} runs for ${oldRunnerName} at ${base === 'runner1' ? 'first' : base === 'runner2' ? 'second' : 'third'} base`
+          description: `Pinch runner: ${newRunnerName} runs for ${oldRunnerName} at ${base === 'br1_pre' ? 'first' : base === 'br2_pre' ? 'second' : 'third'} base`
         });
       }
     }

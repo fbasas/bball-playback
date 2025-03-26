@@ -15,9 +15,23 @@ export const checkSubstitutions: RequestHandler = async (req, res) => {
   try {
     // Validate input
     if (!gameId || !sessionId || isNaN(currentPlay)) {
-      res.status(400).json({ 
-        error: 'Missing required parameters: gameId, sessionId, currentPlay' 
+      res.status(400).json({
+        error: 'Missing required parameters: gameId, sessionId, currentPlay'
       });
+      return;
+    }
+
+    // Handle the case when currentPlay is 0
+    if (currentPlay === 0) {
+      // TODO: In the future, handle the edge case where a substitution occurs before the first play of the game
+      // For now, we automatically report that no substitutions occurred
+      const emptyResponse: SubstitutionResponse = {
+        hasPitchingChange: false,
+        hasPinchHitter: false,
+        hasPinchRunner: false,
+        substitutions: []
+      };
+      res.json(emptyResponse);
       return;
     }
 
@@ -25,8 +39,8 @@ export const checkSubstitutions: RequestHandler = async (req, res) => {
     const detector = await SubstitutionDetector.createFromCurrentPlay(gameId, sessionId, currentPlay);
     
     if (!detector) {
-      res.status(404).json({ 
-        error: 'Play data not found for the specified game and play index, or no next play exists' 
+      res.status(404).json({
+        error: 'Play data not found for the specified game and play index, or no next play exists'
       });
       return;
     }

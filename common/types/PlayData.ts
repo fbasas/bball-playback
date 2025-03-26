@@ -11,9 +11,10 @@ export interface PlayData {
   batter: string;        // Current batter ID
   pitcher: string;       // Current pitcher ID
   outs_pre: number;      // Number of outs before the play
-  runner1?: string;      // Runner on first base (if any)
-  runner2?: string;      // Runner on second base (if any)
-  runner3?: string;      // Runner on third base (if any)
+  outs_post: number;     // Number of outs after the play
+  br1_pre?: string;      // Runner on first base before the play
+  br2_pre?: string;      // Runner on second base before the play
+  br3_pre?: string;      // Runner on third base before the play
   f2?: string;           // Fielder position 2 (catcher) player ID
   f3?: string;           // Fielder position 3 (first base) player ID
   f4?: string;           // Fielder position 4 (second base) player ID
