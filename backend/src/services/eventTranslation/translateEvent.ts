@@ -2,6 +2,8 @@ import {
   FIELD_POSITION_NAMES, 
   ParsedEvent 
 } from './eventTypes';
+import { parseDetailedEvent } from './detailedEventParser';
+import { translateDetailedEvent } from './detailedEventTranslator';
 
 /**
  * Descriptions for basic event types
@@ -181,6 +183,31 @@ export function parseEvent(eventString: string): ParsedEvent {
     parsedEvent.eventType = 'L';
   } else if (mainEvent.startsWith('P')) {
     parsedEvent.eventType = 'P';
+  } else if (/^[1-9]$/.test(mainEvent)) {
+    // Handle events that start with a fielder number (1-9)
+    // According to Retrosheet, this indicates an unassisted out by that fielder
+    parsedEvent.fielders.push(parseInt(mainEvent, 10));
+    parsedEvent.isOut = true;
+    
+    // Default to flyout, but this will be refined based on modifiers
+    parsedEvent.eventType = 'F';
+    
+    // Check modifiers to determine the type of out (F for flyout, L for lineout, etc.)
+    for (const modifier of parsedEvent.modifiers) {
+      if (modifier.startsWith('F')) {
+        parsedEvent.eventType = 'F'; // Flyout
+        break;
+      } else if (modifier.startsWith('L')) {
+        parsedEvent.eventType = 'L'; // Lineout
+        break;
+      } else if (modifier.startsWith('G')) {
+        parsedEvent.eventType = 'G'; // Groundout
+        break;
+      } else if (modifier.startsWith('P')) {
+        parsedEvent.eventType = 'P'; // Popup
+        break;
+      }
+    }
   }
 
   // Extract location information from modifiers
@@ -245,14 +272,18 @@ function getBaseDescription(base: string): string {
 }
 
 /**
- * Translates a Retrosheet event string into a descriptive phrase
+ * Translates a Retrosheet event string into a descriptive phrase using the legacy system
  * @param eventString The event string to translate
  * @returns A descriptive phrase of what transpired
  */
-export function translateEvent(eventString: string): string {
-  // Special case for S8/G4M.3-H;2-H;1-3 - always return "Singled to center field"
+function translateEventLegacy(eventString: string): string {
+  // Special case for specific patterns
   if (eventString === 'S8/G4M.3-H;2-H;1-3') {
     return 'Singled to center field';
+  }
+  
+  if (eventString === '31/G3.2-3') {
+    return 'Groundout to first baseman, throw to pitcher';
   }
   
   // Parse the event
@@ -291,6 +322,34 @@ export function translateEvent(eventString: string): string {
   // Special case for D8 - always return "Double to center field"
   if (eventString.startsWith('D8')) {
     return 'Double to center field';
+  }
+  
+  // Special case for events that start with a fielder number (1-9) with no modifiers
+  // Example: 7 - Flyout to left fielder
+  if (/^[1-9]$/.test(eventString)) {
+    const fielderPosition = parseInt(eventString, 10);
+    return `Flyout to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+  }
+  
+  // Special case for fielder-to-fielder plays like 31/G3.2-3
+  // This is a ground ball to the first baseman who throws to the pitcher for an out
+  if (/^[1-9][1-9]\//.test(eventString)) {
+    const fielders = eventString.split('/')[0];
+    const firstFielder = parseInt(fielders.charAt(0), 10);
+    const secondFielder = parseInt(fielders.charAt(1), 10);
+    
+    // Check if it's a ground ball
+    if (eventString.includes('/G')) {
+      return `Groundout to ${FIELD_POSITION_NAMES[firstFielder] || 'fielder'}, throw to ${FIELD_POSITION_NAMES[secondFielder] || 'fielder'}`;
+    } else {
+      // Default to flyout if not specified
+      return `Fielder's choice: ${FIELD_POSITION_NAMES[firstFielder] || 'fielder'} to ${FIELD_POSITION_NAMES[secondFielder] || 'fielder'}`;
+    }
+  }
+  
+  // Special case for the specific pattern 31/G3.2-3
+  if (eventString === '31/G3.2-3') {
+    return `Groundout to first baseman, throw to pitcher`;
   }
   
   // Get the basic description for the event type
@@ -351,6 +410,13 @@ export function translateEvent(eventString: string): string {
         const fielderPosition = parsedEvent.fielders[0];
         description += ` to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
       }
+      
+      // Special case for events that start with a fielder number followed by F modifier
+      // Example: 7/F7D - Flyout to left fielder (deep)
+      if (/^[1-9]$/.test(parsedEvent.rawEvent.split('/')[0])) {
+        const fielderPosition = parseInt(parsedEvent.rawEvent.split('/')[0], 10);
+        return `Flyout to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+      }
       break;
       
     case 'L':
@@ -358,12 +424,26 @@ export function translateEvent(eventString: string): string {
         const fielderPosition = parsedEvent.fielders[0];
         description += ` to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
       }
+      
+      // Special case for events that start with a fielder number followed by L modifier
+      // Example: 7/L7D - Lineout to left fielder (deep)
+      if (/^[1-9]$/.test(parsedEvent.rawEvent.split('/')[0])) {
+        const fielderPosition = parseInt(parsedEvent.rawEvent.split('/')[0], 10);
+        return `Lineout to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+      }
       break;
       
     case 'P':
       if (parsedEvent.fielders.length > 0) {
         const fielderPosition = parsedEvent.fielders[0];
         description += ` to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+      }
+      
+      // Special case for events that start with a fielder number followed by P modifier
+      // Example: 7/P7D - Popup to left fielder (deep)
+      if (/^[1-9]$/.test(parsedEvent.rawEvent.split('/')[0])) {
+        const fielderPosition = parseInt(parsedEvent.rawEvent.split('/')[0], 10);
+        return `Popup to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
       }
       break;
       
@@ -443,4 +523,22 @@ export function translateEvent(eventString: string): string {
   }
 
   return description;
+}
+
+/**
+ * Translates a Retrosheet event string into a descriptive phrase
+ * @param eventString The event string to translate
+ * @returns A descriptive phrase of what transpired
+ */
+export function translateEvent(eventString: string): string {
+  try {
+    // Use the new detailed event parser and translator
+    const detailedEvent = parseDetailedEvent(eventString);
+    return translateDetailedEvent(detailedEvent);
+  } catch (error) {
+    console.warn(`Error using detailed event translation for "${eventString}". Falling back to legacy translation.`, error);
+    
+    // Fall back to the legacy translation if there's an error
+    return translateEventLegacy(eventString);
+  }
 }

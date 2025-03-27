@@ -34,4 +34,5 @@ export interface SimplifiedBaseballState {
     nextPitcher: string | null;
   };
   currentPlay: number;
+  playDescription?: string;  // One-line description of the play
 }

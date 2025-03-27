@@ -23,6 +23,7 @@ export interface PlayData {
   f7?: string;           // Fielder position 7 (left field) player ID
   f8?: string;           // Fielder position 8 (center field) player ID
   f9?: string;           // Fielder position 9 (right field) player ID
+  event?: string;        // Retrosheet event code
 }
 
 /**

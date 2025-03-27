@@ -6,6 +6,7 @@ import { db } from '../../config/database';
 import { generateCompletion } from '../../services/openai';
 import { generateNextPlayPrompt } from '../../services/prompts';
 import { detectAndSaveLineupChanges, getLineupStateForPlay } from '../../services/game/lineupTracking';
+import { translateEvent } from '../../services/eventTranslation';
 import {
     fetchFirstPlay,
     generateInitializationCompletion,
@@ -58,9 +59,14 @@ const fetchPlayData = async (gameId: string, currentPlay: number): Promise<PlayD
         throw new Error('No more plays found for the specified game ID');
     }
     
-    if (!nextPlayData.inning || nextPlayData.top_bot === undefined || 
+    if (!nextPlayData.inning || nextPlayData.top_bot === undefined ||
         nextPlayData.outs_pre === undefined) {
         throw new Error('Missing required data in next play');
+    }
+    
+    // Check for the event field
+    if (!nextPlayData.event) {
+        throw new Error('Event data not found for the specified play');
     }
     
     return { currentPlayData, nextPlayData };
@@ -310,7 +316,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     nextBatter: gameState.visitors.currentBatter || null,
                     nextPitcher: gameState.visitors.currentPitcher || null
                 },
-                currentPlay: firstPlay.pn
+                currentPlay: firstPlay.pn,
+                playDescription: undefined // No play description for initialization
             };
             
             res.json(simplifiedState);
@@ -326,7 +333,16 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         
         const logEntries = await generatePlayCompletion(currentState, nextPlayData, currentPlay, skipLLM, gameId);
         
-        // No debug logging in production code
+        // Generate play description using the event translation service
+        let playDescription: string | undefined;
+        try {
+            // We've already checked that nextPlayData.event exists in fetchPlayData
+            playDescription = translateEvent(nextPlayData.event!);
+            console.log(`[NEXTPLAY] Generated play description: ${playDescription}`);
+        } catch (error) {
+            console.error('Error translating event:', error instanceof Error ? error.message : error);
+            throw new Error('Failed to translate event data');
+        }
         
         // Create a simplified response
         const simplifiedState: SimplifiedBaseballState = {
@@ -359,7 +375,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 nextBatter: nextPlayData.top_bot === 0 ? nextPlayData.batter || null : null,
                 nextPitcher: nextPlayData.top_bot === 1 ? nextPlayData.pitcher || null : null
             },
-            currentPlay: nextPlayData.pn
+            currentPlay: nextPlayData.pn,
+            playDescription
         };
         
         // No debug logging in production code

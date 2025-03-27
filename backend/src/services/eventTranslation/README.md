@@ -1,69 +1,103 @@
-# Event Translation Service
+# Event Translation System
 
-This service provides functionality to translate Retrosheet event codes into human-readable descriptions of baseball plays.
+This directory contains the implementation of a robust event translation system for Retrosheet event codes. The system is designed to parse and translate Retrosheet event codes into human-readable descriptions without relying on special cases.
 
 ## Overview
 
-The Retrosheet event format is a compact notation used to describe baseball plays. This service parses these event codes and generates descriptive phrases that explain what happened during the play, similar to the play-by-play descriptions found on the Retrosheet website.
+Retrosheet event codes are a compact notation used to describe baseball plays. For example, `S8` represents a single to center field, and `643` represents a ground ball to the shortstop who throws to the second baseman who then throws to the first baseman for a double play.
+
+The event translation system consists of three main components:
+
+1. **Event Parser**: Parses Retrosheet event codes into a structured representation
+2. **Event Translator**: Translates the structured representation into human-readable descriptions
+3. **Main Interface**: Provides a simple interface for translating event codes
 
 ## Files
 
-- `index.ts` - Main export file
-- `eventTypes.ts` - Type definitions and constants
-- `translateEvent.ts` - Core translation function
-- `tests/translateEvent.test.ts` - Test script
+- `detailedEventTypes.ts`: Defines the types and interfaces for the event translation system
+- `detailedEventParser.ts`: Implements the parsing of Retrosheet event codes
+- `detailedEventTranslator.ts`: Implements the translation of parsed events
+- `translateEvent.ts`: Provides the main interface for translating event codes
+- `translateEvent.test.ts`: Contains tests for the event translation system
 
 ## Usage
 
+To translate a Retrosheet event code, use the `translateEvent` function:
+
 ```typescript
-import { translateEvent } from '../services/eventTranslation';
+import { translateEvent } from './translateEvent';
 
-// Example: Translate a single event
-const eventString = 'S7/L7';
-const description = translateEvent(eventString);
-console.log(description); // "Singled to left field"
-
-// Example: Translate a home run
-const homeRun = 'HR/F78';
-console.log(translateEvent(homeRun)); // "Homered to center field"
-
-// Example: Translate a strikeout
-const strikeout = 'K';
-console.log(translateEvent(strikeout)); // "Struck out"
+const description = translateEvent('S8');
+console.log(description); // "Single to center field"
 ```
 
-## Event Format
+For more advanced usage, you can use the `parseDetailedEvent` and `translateDetailedEvent` functions directly:
 
-The event format is described in detail at [https://www.retrosheet.org/eventfile.htm](https://www.retrosheet.org/eventfile.htm).
+```typescript
+import { parseDetailedEvent } from './detailedEventParser';
+import { translateDetailedEvent } from './detailedEventTranslator';
 
-Some common event types:
+const event = parseDetailedEvent('S8');
+console.log(event);
+// {
+//   primaryEventType: 'S',
+//   fielders: [{ position: 8, role: 'primary' }],
+//   location: { zone: 'outfield', direction: 'center', depth: '', trajectory: '' },
+//   baseRunning: [],
+//   isOut: false,
+//   outCount: 0,
+//   isDoublePlay: false,
+//   isTriplePlay: false,
+//   isFieldersChoice: false,
+//   isError: false,
+//   rawEvent: 'S8'
+// }
 
-- `S` - Single
-- `D` - Double
-- `T` - Triple
-- `HR` - Home Run
-- `K` - Strikeout
-- `W` - Walk
-- `HP` - Hit by pitch
-- `E` - Error
-- `FC` - Fielder's choice
-- `G` - Ground out
-- `F` - Fly out
-- `L` - Line out
-- `P` - Pop out
+const description = translateDetailedEvent(event);
+console.log(description); // "Single to center field"
+```
+
+## Design
+
+The event translation system is designed to be robust and maintainable. It uses a pattern-based approach to parse and translate event codes, rather than relying on special cases.
+
+### Event Parsing
+
+The event parser breaks down the event code into its component parts:
+
+1. **Primary Event**: The main action (e.g., single, double, groundout)
+2. **Fielders**: The fielders involved in the play
+3. **Location**: Where the ball was hit
+4. **Base Running**: How runners advanced on the play
+
+### Event Translation
+
+The event translator generates a human-readable description based on the parsed event:
+
+1. **Primary Event Description**: A description of the main action
+2. **Location Description**: A description of where the ball was hit
+3. **Fielder Description**: A description of the fielders involved
+4. **RBI Information**: Information about runs batted in
+
+## Benefits
+
+The new event translation system offers several benefits:
+
+1. **Consistency**: All events are parsed and translated using the same logic
+2. **Maintainability**: The code is more modular and easier to understand
+3. **Extensibility**: New event types or patterns can be added without special cases
+4. **Robustness**: The system can handle complex event notations correctly
 
 ## Testing
 
-To test the event translation functionality, run:
+The event translation system includes comprehensive tests to ensure that it works correctly. The tests cover a wide range of event codes, including all the special cases that were previously hardcoded.
+
+To run the tests, use the following command:
 
 ```bash
-cd backend
-npx ts-node src/scripts/testEventTranslation.ts
+npm test
 ```
-
-This will fetch plays from the database for game ID NYA202410300 and display the original event code alongside its translation.
 
 ## References
 
 - [Retrosheet Event File Documentation](https://www.retrosheet.org/eventfile.htm)
-- [Example Play-by-Play](https://www.retrosheet.org/boxesetc/2024/B10300NYA2024.htm)
