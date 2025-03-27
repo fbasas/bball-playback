@@ -35,4 +35,5 @@ export interface SimplifiedBaseballState {
   };
   currentPlay: number;
   playDescription?: string;  // One-line description of the play
+  eventString?: string;  // The raw event string from the play data
 }

@@ -317,7 +317,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     nextPitcher: gameState.visitors.currentPitcher || null
                 },
                 currentPlay: firstPlay.pn,
-                playDescription: undefined // No play description for initialization
+                playDescription: undefined, // No play description for initialization
+                eventString: firstPlay.event // Include event string for the first play
             };
             
             res.json(simplifiedState);
@@ -376,7 +377,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 nextPitcher: nextPlayData.top_bot === 1 ? nextPlayData.pitcher || null : null
             },
             currentPlay: nextPlayData.pn,
-            playDescription
+            playDescription,
+            eventString: nextPlayData.event
         };
         
         // No debug logging in production code

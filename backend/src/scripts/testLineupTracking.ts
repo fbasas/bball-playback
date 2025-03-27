@@ -159,6 +159,13 @@ function logGameState(nextPlayData: SimplifiedBaseballState) {
     console.log(`- Play description: Not available`);
   }
   
+  // Log the event string if available
+  if (nextPlayData.eventString) {
+    console.log(`- Event string: ${nextPlayData.eventString}`);
+  } else {
+    console.log(`- Event string: Not available`);
+  }
+  
   // Add a summary of baserunners
   const baserunners = [];
   if (nextPlayData.game.onFirst) baserunners.push(`1B: ${nextPlayData.game.onFirst}`);
