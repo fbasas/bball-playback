@@ -127,6 +127,39 @@ The backend uses Handlebars templates to generate prompts for OpenAI. Each promp
 - `initGame.ts`: Template and function for initializing a game
 - `nextPlay.ts`: Template and function for generating the next play
 - `lineupAnnouncement.ts`: Template and function for announcing lineups using the lineup data service
+- `playByPlay.ts`: Template and function for generating customized play-by-play commentary with different announcer styles
+
+#### Play-by-Play Commentary
+
+The application supports generating play-by-play commentary in different announcer styles:
+
+- **Classic** (Bob Costas): Professional, precise, knowledgeable, balanced
+- **Modern** (Joe Buck): Energetic, concise, dramatic, modern
+- **Enthusiastic** (Harry Caray): Enthusiastic, folksy, passionate, fan-like
+- **Poetic** (Vin Scully): Eloquent, poetic, storytelling, detailed, conversational
+
+To generate play-by-play commentary:
+
+```typescript
+import { generatePlayByPlayPrompt } from './services/prompts';
+import { generateCompletion } from './services/openai';
+
+// Get the baseball state from the next play endpoint
+const baseballState = await fetchNextPlay(gameId, currentPlay);
+
+// Generate the play-by-play prompt with a specific announcer style
+const prompt = generatePlayByPlayPrompt(baseballState, 'poetic');
+
+// Send the prompt to OpenAI
+const playByPlay = await generateCompletion(prompt, gameId);
+```
+
+You can run the example script to see the different announcer styles:
+
+```bash
+cd backend
+npm run example:play-by-play
+```
 
 #### Game Services (`backend/src/services/game/`)
 

@@ -13,7 +13,8 @@
     "dev": "nodemon src/bball-playback.ts",
     "debug": "nodemon --inspect src/bball-playback.ts",
     "test:lineup": "ts-node src/scripts/testLineupTracking.ts",
-    "debug:lineup": "node --inspect-brk=9230 -r ts-node/register src/scripts/testLineupTracking.ts"
+    "debug:lineup": "node --inspect-brk=9230 -r ts-node/register src/scripts/testLineupTracking.ts",
+    "example:play-by-play": "ts-node src/scripts/examplePlayByPlay.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
