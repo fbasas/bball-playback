@@ -24,6 +24,7 @@ export interface PlayData {
   f8?: string;           // Fielder position 8 (center field) player ID
   f9?: string;           // Fielder position 9 (right field) player ID
   event?: string;        // Retrosheet event code
+  runs?: number | null;  // Runs scored on this play
 }
 
 /**

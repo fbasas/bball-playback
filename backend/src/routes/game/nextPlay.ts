@@ -50,6 +50,7 @@ const fetchPlayData = async (gameId: string, currentPlay: number): Promise<PlayD
     }
     
     const nextPlayData = await db('plays')
+        .select('*', 'runs') // Select the runs column
         .where({ gid: gameId })
         .where('pn', '>', currentPlay)
         .orderBy('pn', 'asc')
@@ -62,6 +63,12 @@ const fetchPlayData = async (gameId: string, currentPlay: number): Promise<PlayD
     if (!nextPlayData.inning || nextPlayData.top_bot === undefined ||
         nextPlayData.outs_pre === undefined) {
         throw new Error('Missing required data in next play');
+    }
+
+    // Check for runs field (should exist based on schema)
+    if (nextPlayData.runs === undefined || nextPlayData.runs === null) {
+        console.warn(`[NEXTPLAY] Warning: Runs field missing or null for play ${nextPlayData.pn}. Assuming 0 runs.`);
+        nextPlayData.runs = 0; // Default to 0 if missing
     }
     
     // Check for the event field
@@ -104,7 +111,8 @@ const processLineupState = async (
     sessionId: string,
     currentPlay: number,
     currentState: BaseballState,
-    currentPlayData: PlayData
+    currentPlayData: PlayData,
+    nextPlayData: PlayData // Add nextPlayData here
 ): Promise<BaseballState> => {
     const lineupState = await getLineupStateForPlay(gameId, sessionId, currentPlay);
     
@@ -125,6 +133,31 @@ const processLineupState = async (
             lastName: player.last || ''
         });
     });
+
+    // Helper to get player name, fetching if not in map
+    const getPlayerNameFromMap = async (playerId: string | null | undefined): Promise<string | null> => {
+        if (!playerId) return null;
+        
+        let player = playerMap.get(playerId);
+        if (!player) {
+            const dbPlayer = await db('allplayers')
+                .where({ id: playerId })
+                .select('id', 'first', 'last')
+                .first();
+            if (dbPlayer) {
+                player = {
+                    firstName: dbPlayer.first || '',
+                    lastName: dbPlayer.last || ''
+                };
+                playerMap.set(playerId, player); // Cache for future use
+                console.log(`[NEXTPLAY] Fetched and cached runner ${playerId}: ${player.firstName} ${player.lastName}`);
+            } else {
+                 console.warn(`[NEXTPLAY] Could not find player details for runner ID: ${playerId}`);
+                 return playerId; // Return ID if name not found
+            }
+        }
+        return `${player.firstName} ${player.lastName}`.trim();
+    };
     
     const homeTeamPlayers = lineupState.players.filter(p => p.teamId === currentState.home.id);
     const visitingTeamPlayers = lineupState.players.filter(p => p.teamId === currentState.visitors.id);
@@ -209,9 +242,20 @@ const processLineupState = async (
     const visitingBatterName = visitingBatter
         ? `${playerMap.get(visitingBatter.playerId)?.firstName || ''} ${playerMap.get(visitingBatter.playerId)?.lastName || ''}`.trim()
         : '';
-    
+
+    // Get runner names using the helper
+    const runner1Name = await getPlayerNameFromMap(nextPlayData.br1_pre);
+    const runner2Name = await getPlayerNameFromMap(nextPlayData.br2_pre);
+    const runner3Name = await getPlayerNameFromMap(nextPlayData.br3_pre);
+
     return {
         ...currentState,
+        game: { // Update game state with runner names
+             ...currentState.game,
+             onFirst: runner1Name || '',
+             onSecond: runner2Name || '',
+             onThird: runner3Name || ''
+        },
         home: {
             ...currentState.home,
             lineup: homeLineup,
@@ -305,7 +349,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     currentBatter: null,
                     currentPitcher: null,
                     nextBatter: gameState.home.currentBatter || null,
-                    nextPitcher: gameState.home.currentPitcher || null
+                    nextPitcher: gameState.home.currentPitcher || null,
+                    runs: 0 // Initialize home runs
                 },
                 visitors: {
                     id: gameState.visitors.id,
@@ -314,7 +359,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     currentBatter: null,
                     currentPitcher: null,
                     nextBatter: gameState.visitors.currentBatter || null,
-                    nextPitcher: gameState.visitors.currentPitcher || null
+                    nextPitcher: gameState.visitors.currentPitcher || null,
+                    runs: 0 // Initialize visitor runs
                 },
                 currentPlay: firstPlay.pn,
                 playDescription: undefined, // No play description for initialization
@@ -330,7 +376,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         
         const { currentPlayData, nextPlayData } = await fetchPlayData(gameId, currentPlay);
         let currentState = createInitialBaseballState(gameId, sessionId, currentPlay, currentPlayData);
-        currentState = await processLineupState(gameId, sessionId, currentPlay, currentState, currentPlayData);
+        currentState = await processLineupState(gameId, sessionId, currentPlay, currentState, currentPlayData, nextPlayData); // Pass nextPlayData
         
         const logEntries = await generatePlayCompletion(currentState, nextPlayData, currentPlay, skipLLM, gameId);
         
@@ -345,6 +391,48 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             throw new Error('Failed to translate event data');
         }
         
+        // --- Calculate Cumulative Score ---
+        // Fetch all plays up to and including the *current* play to get score *before* next play
+        const previousPlays = await db('plays')
+            .select('gid', 'pn', 'top_bot', 'batteam', 'runs')
+            .where({ gid: gameId })
+            .where('pn', '<=', currentPlay) // Include current play
+            .orderBy('pn', 'asc');
+
+        let homeScoreBeforePlay = 0;
+        let visitorScoreBeforePlay = 0;
+        const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam; // Determine home team ID from current play
+
+        previousPlays.forEach(play => {
+            const runsOnPlay = play.runs || 0; // Default to 0 if null/undefined
+            if (runsOnPlay > 0) {
+                // Determine which team was batting during this play
+                const isHomeBatting = play.batteam === homeTeamId;
+                if (isHomeBatting) {
+                    homeScoreBeforePlay += runsOnPlay;
+                } else {
+                    visitorScoreBeforePlay += runsOnPlay;
+                }
+            }
+        });
+        console.log(`[NEXTPLAY] Score before play ${nextPlayData.pn}: Home=${homeScoreBeforePlay}, Away=${visitorScoreBeforePlay}`);
+
+        // Calculate score *after* the next play
+        let homeScoreAfterPlay = homeScoreBeforePlay;
+        let visitorScoreAfterPlay = visitorScoreBeforePlay;
+        const runsOnNextPlay = nextPlayData.runs || 0;
+
+        if (runsOnNextPlay > 0) {
+            const isHomeBattingNext = nextPlayData.batteam === homeTeamId;
+            if (isHomeBattingNext) {
+                homeScoreAfterPlay += runsOnNextPlay;
+            } else {
+                visitorScoreAfterPlay += runsOnNextPlay;
+            }
+        }
+        console.log(`[NEXTPLAY] Score after play ${nextPlayData.pn}: Home=${homeScoreAfterPlay}, Away=${visitorScoreAfterPlay} (Runs on play: ${runsOnNextPlay})`);
+        // --- End Score Calculation ---
+
         // Create a simplified response
         const simplifiedState: SimplifiedBaseballState = {
             gameId: currentState.gameId,
@@ -354,25 +442,30 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 isTopInning: nextPlayData.top_bot === 0,
                 outs: nextPlayData.outs_pre,
                 log: logEntries,
-                onFirst: nextPlayData.br1_pre || '',
-                onSecond: nextPlayData.br2_pre || '',
-                onThird: nextPlayData.br3_pre || ''
+                onFirst: currentState.game.onFirst || '', // Use name from processed state
+                onSecond: currentState.game.onSecond || '', // Use name from processed state
+                onThird: currentState.game.onThird || '' // Use name from processed state
             },
-            home: {
-                id: nextPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam,
-                displayName: currentState.home.displayName,
-                shortName: currentState.home.shortName,
-                currentBatter: currentState.home.currentBatter,
-                currentPitcher: currentState.home.currentPitcher,
+            home: { // Note: This object might represent the VISITING team if top_bot=0
+                id: nextPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam, // This is the ACTUAL home team ID
+                displayName: currentState.home.displayName, // Display names might be swapped here, consider fetching based on ID if needed
+                shortName: currentState.home.shortName,     // Display names might be swapped here, consider fetching based on ID if needed
+                currentBatter: currentState.home.currentBatter, // This might be the VISITING batter if top_bot=0
+                currentPitcher: currentState.home.currentPitcher, // This might be the VISITING pitcher if top_bot=0
+                // Assign score based on the ACTUAL home team ID determined during calculation
+                runs: (nextPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam) === homeTeamId ? homeScoreAfterPlay : visitorScoreAfterPlay,
                 nextBatter: nextPlayData.top_bot === 1 ? nextPlayData.batter || null : null,
                 nextPitcher: nextPlayData.top_bot === 0 ? nextPlayData.pitcher || null : null
             },
-            visitors: {
-                id: nextPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam,
-                displayName: currentState.visitors.displayName,
-                shortName: currentState.visitors.shortName,
-                currentBatter: currentState.visitors.currentBatter,
-                currentPitcher: currentState.visitors.currentPitcher,
+            visitors: { // Note: This object might represent the HOME team if top_bot=0
+                id: nextPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam, // This is the ACTUAL visitor team ID
+                displayName: currentState.visitors.displayName, // Display names might be swapped here, consider fetching based on ID if needed
+                shortName: currentState.visitors.shortName,     // Display names might be swapped here, consider fetching based on ID if needed
+                currentBatter: currentState.visitors.currentBatter, // This might be the HOME batter if top_bot=0
+                currentPitcher: currentState.visitors.currentPitcher, // This might be the HOME pitcher if top_bot=0
+                 // Assign score based on the ACTUAL team ID for this slot
+                 // If the ID in this slot IS the home team, assign home score, otherwise assign visitor score.
+                runs: (nextPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam) === homeTeamId ? homeScoreAfterPlay : visitorScoreAfterPlay,
                 nextBatter: nextPlayData.top_bot === 0 ? nextPlayData.batter || null : null,
                 nextPitcher: nextPlayData.top_bot === 1 ? nextPlayData.pitcher || null : null
             },
@@ -456,6 +549,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             console.error('Error tracking lineup changes:', error instanceof Error ? error.message : error);
         }
         
+        // Log the final state being sent
+        console.log('[NEXTPLAY] Sending simplified state:', JSON.stringify(simplifiedState, null, 2));
         res.json(simplifiedState);
         } catch (error: unknown) {
             console.error('Error:', error);

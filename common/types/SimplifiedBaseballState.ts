@@ -23,6 +23,7 @@ export interface SimplifiedBaseballState {
     currentPitcher: string | null;
     nextBatter: string | null;
     nextPitcher: string | null;
+    runs: number; // Add runs field
   };
   visitors: {
     id: string;
@@ -32,6 +33,7 @@ export interface SimplifiedBaseballState {
     currentPitcher: string | null;
     nextBatter: string | null;
     nextPitcher: string | null;
+    runs: number; // Add runs field
   };
   currentPlay: number;
   playDescription?: string;  // One-line description of the play

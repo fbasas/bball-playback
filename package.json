@@ -1,8 +1,12 @@
 {
   "devDependencies": {
-    "@types/node": "^22.13.9"
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^22.13.9",
+    "@types/yargs": "^17.0.33"
   },
   "dependencies": {
-    "mysql2": "^3.13.0"
+    "inquirer": "^8.2.4",
+    "mysql2": "^3.13.0",
+    "yargs": "^17.7.2"
   }
 }

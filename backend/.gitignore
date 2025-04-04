@@ -26,6 +26,9 @@ out/
 # Coverage directory used by tools like istanbul
 coverage/
 
+# MCP Tools
+mcp-mysql-server/
+
 # Misc
 .DS_Store
 .idea/
