@@ -51,8 +51,8 @@ export class CommentaryService {
    */
   public static async generateDetailedPlayCompletion(
     currentState: BaseballState,
-    nextPlay: PlayData,
-    currentPlay: number,
+    currentPlay: PlayData, // Renamed from nextPlay to currentPlay for clarity
+    currentPlayIndex: number,
     skipLLM: boolean,
     gameId: string,
     announcerStyle: AnnouncerStyle = 'classic'
@@ -90,9 +90,10 @@ export class CommentaryService {
         nextPitcher: null,
         runs: currentState.visitors.stats.runs
       },
-      currentPlay: currentPlay,
-      playDescription: translateEvent(nextPlay.event || ''),
-      eventString: nextPlay.event
+      currentPlay: currentPlayIndex,
+      // Use the current play's event for the play description
+      playDescription: translateEvent(currentPlay.event || ''),
+      eventString: currentPlay.event
     };
     
     // Generate the detailed prompt

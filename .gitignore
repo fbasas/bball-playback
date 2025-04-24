@@ -18,3 +18,4 @@ backend/.env
 common/.env
 .clinerules
 .env.migration
+.roomodes

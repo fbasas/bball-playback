@@ -110,8 +110,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         // Generate detailed play-by-play commentary
         const logEntries = await CommentaryService.generateDetailedPlayCompletion(
             currentState,
-            nextPlayData,
-            currentPlay,
+            currentPlayData, // Using currentPlayData for commentary
+            currentPlay, // This is now currentPlayIndex in the method signature
             skipLLM,
             gameId,
             announcerStyle
