@@ -217,8 +217,8 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
     
     event.isOut = true;
     
-    // Default to groundout, will be refined by modifiers
-    event.primaryEventType = 'G';
+    // Don't set a default event type, it will be determined by modifiers
+    event.primaryEventType = '';
     
     // Parse the fielders
     for (let i = 0; i < primaryEvent.length; i++) {
@@ -296,6 +296,22 @@ function parseModifiers(modifiers: string[], event: DetailedBaseballEvent): void
     } else if (modifier.includes('R') && !modifier.startsWith('R')) {
       event.location.direction = 'right';
     }
+  }
+  
+  // If we still don't have a primary event type after processing all modifiers,
+  // and this is a fielder-number play, default to flyout for outfielders (7-9)
+  // and groundout for infielders (1-6)
+  if (!event.primaryEventType && event.fielders.length > 0 && /^[1-9]$/.test(event.rawEvent.split('/')[0])) {
+    const fielderPosition = parseInt(event.rawEvent.split('/')[0], 10);
+    if (fielderPosition >= 7 && fielderPosition <= 9) {
+      // Outfielders (7=LF, 8=CF, 9=RF) default to flyout
+      event.primaryEventType = 'F';
+    } else {
+      // Infielders default to groundout
+      event.primaryEventType = 'G';
+    }
+    event.isOut = true;
+    event.outCount = 1;
   }
 }
 

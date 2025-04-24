@@ -28,7 +28,8 @@ const mockState: SimplifiedBaseballState = {
     currentBatter: null,
     currentPitcher: 'Chris Sale',
     nextBatter: null,
-    nextPitcher: null
+    nextPitcher: null,
+    runs: 2
   },
   visitors: {
     id: 'NYY',
@@ -37,7 +38,8 @@ const mockState: SimplifiedBaseballState = {
     currentBatter: 'Aaron Judge',
     currentPitcher: null,
     nextBatter: null,
-    nextPitcher: null
+    nextPitcher: null,
+    runs: 3
   },
   currentPlay: 42,
   playDescription: 'Double to right field',
@@ -81,7 +83,7 @@ async function runExample() {
     /*
     try {
       console.log('Generating play-by-play commentary...');
-      const playByPlay = await generateCompletion(prompt, mockState.gameId);
+      const playByPlay = await generateCompletion(prompt, { gameId: mockState.gameId, announcerStyle });
       console.log('\nGenerated Play-by-Play:');
       console.log('------------------------');
       console.log(playByPlay);

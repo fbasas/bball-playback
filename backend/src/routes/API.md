@@ -65,6 +65,7 @@ Gets the next play in a game sequence.
 - **Query Parameters**:
   - `currentPlay`: Index of the current play
   - `skipLLM` (optional): Set to 'true' to skip LLM calls for testing
+  - `announcerStyle` (optional): Announcer style to use for commentary. Options: 'classic', 'modern', 'enthusiastic', 'poetic'. Default: 'classic'
 - **Headers**:
   - `session-id`: Session identifier
 - **Response Data**: `BaseballState` object with the next play information

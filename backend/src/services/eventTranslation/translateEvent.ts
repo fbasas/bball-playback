@@ -186,11 +186,13 @@ export function parseEvent(eventString: string): ParsedEvent {
   } else if (/^[1-9]$/.test(mainEvent)) {
     // Handle events that start with a fielder number (1-9)
     // According to Retrosheet, this indicates an unassisted out by that fielder
-    parsedEvent.fielders.push(parseInt(mainEvent, 10));
+    const fielderPosition = parseInt(mainEvent, 10);
+    parsedEvent.fielders.push(fielderPosition);
     parsedEvent.isOut = true;
     
-    // Default to flyout, but this will be refined based on modifiers
-    parsedEvent.eventType = 'F';
+    // Default to flyout for outfielders (7-9) and groundout for infielders (1-6)
+    // This will be refined based on modifiers
+    parsedEvent.eventType = fielderPosition >= 7 && fielderPosition <= 9 ? 'F' : 'G';
     
     // Check modifiers to determine the type of out (F for flyout, L for lineout, etc.)
     for (const modifier of parsedEvent.modifiers) {
@@ -328,7 +330,9 @@ function translateEventLegacy(eventString: string): string {
   // Example: 7 - Flyout to left fielder
   if (/^[1-9]$/.test(eventString)) {
     const fielderPosition = parseInt(eventString, 10);
-    return `Flyout to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+    // Outfielders (7-9) default to flyout, infielders (1-6) default to groundout
+    const playType = fielderPosition >= 7 && fielderPosition <= 9 ? 'Flyout' : 'Groundout';
+    return `${playType} to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
   }
   
   // Special case for fielder-to-fielder plays like 31/G3.2-3
@@ -394,6 +398,13 @@ function translateEventLegacy(eventString: string): string {
         return 'Groundout to shortstop';
       }
       
+      // Special case for events that start with a fielder number followed by G modifier
+      // Example: 7/G7D - Groundout to left fielder (deep)
+      if (/^[1-9]$/.test(parsedEvent.rawEvent.split('/')[0])) {
+        const fielderPosition = parseInt(parsedEvent.rawEvent.split('/')[0], 10);
+        return `Groundout to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
+      }
+      
       if (parsedEvent.fielders.length === 1) {
         // Simple groundout
         const fielderPosition = parsedEvent.fielders[0];
@@ -411,7 +422,7 @@ function translateEventLegacy(eventString: string): string {
         description += ` to ${FIELD_POSITION_NAMES[fielderPosition] || 'fielder'}`;
       }
       
-      // Special case for events that start with a fielder number followed by F modifier
+      // Special case for events that start with a fielder number
       // Example: 7/F7D - Flyout to left fielder (deep)
       if (/^[1-9]$/.test(parsedEvent.rawEvent.split('/')[0])) {
         const fielderPosition = parseInt(parsedEvent.rawEvent.split('/')[0], 10);

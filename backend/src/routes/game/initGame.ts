@@ -58,7 +58,7 @@ export const initGame: RequestHandler = async (req, res) => {
                 completionText = "This is a dummy response for testing purposes. LLM calls are being skipped.";
             } else {
                 // Send the prompt to OpenAI with game ID
-                completionText = await generateCompletion(prompt, gameId);
+                completionText = await generateCompletion(prompt, { gameId });
             }
 
             // Split the completion text by sentence endings to create an array of log entries

@@ -5,21 +5,37 @@ import { generateCompletion } from '../../services/openai';
 import { generateInitGamePrompt } from '../../services/prompts';
 import { getLineupData } from '../../services/game/getLineupData';
 import { saveInitialLineup } from '../../services/game/lineupTracking';
+import { PlayerService } from './player/PlayerService';
+import { PlayDataService } from './playData/PlayDataService';
+import { ResourceNotFoundError, DatabaseError } from '../../types/errors/GameErrors';
+import { GAME_TYPES } from '../../constants/GameConstants';
 
 /**
  * Fetches the first play for a game
  */
 export const fetchFirstPlay = async (gameId: string): Promise<PlayData> => {
-    const firstPlay = await db('plays')
-        .where({ gid: gameId })
-        .orderBy('pn', 'asc')
-        .first();
+    console.log(`[FETCHFIRSTPLAY] Fetching first play for game ${gameId}`);
     
-    if (!firstPlay) {
-        throw new Error('No plays found for the specified game ID');
+    try {
+        // Get all plays for this game to debug
+        const allPlays = await db('plays')
+            .where({ gid: gameId })
+            .orderBy('pn', 'asc')
+            .select('pn', 'event', 'batter', 'pitcher')
+            .limit(5);
+        
+        console.log(`[FETCHFIRSTPLAY] First 5 plays for game ${gameId}:`);
+        allPlays.forEach(play => {
+            console.log(`[FETCHFIRSTPLAY] Play ${play.pn}: ${play.event} - Batter: ${play.batter}, Pitcher: ${play.pitcher}`);
+        });
+        
+        return await PlayDataService.fetchFirstPlay(gameId);
+    } catch (error) {
+        if (error instanceof ResourceNotFoundError) {
+            throw error;
+        }
+        throw new DatabaseError(`Error fetching first play for game ${gameId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    return firstPlay;
 };
 
 /**
@@ -46,7 +62,7 @@ export const generateInitializationCompletion = async (
         completionText = "This is a dummy response for testing purposes. LLM calls are being skipped.";
     } else {
         // Send the prompt to OpenAI with game ID
-        completionText = await generateCompletion(prompt, gameId);
+        completionText = await generateCompletion(prompt, { gameId });
     }
 
     // Split the completion text by sentence endings to create an array of log entries
@@ -68,7 +84,7 @@ export const initializeLineupTracking = async (gameId: string, sessionId: string
             .select('team', 'start_l1', 'start_l2', 'start_l3', 'start_l4', 'start_l5', 'start_l6', 'start_l7', 'start_l8', 'start_l9', 'start_f1');
         
         if (!teamstats || teamstats.length !== 2) {
-            throw new Error(`Team stats not found for game ID: ${gameId}`);
+            throw new ResourceNotFoundError(`Team stats not found for game ID: ${gameId}`);
         }
         
         // Get game info to determine home and visiting teams
@@ -77,7 +93,7 @@ export const initializeLineupTracking = async (gameId: string, sessionId: string
             .first();
         
         if (!gameInfo) {
-            throw new Error(`Game information not found for game ID: ${gameId}`);
+            throw new ResourceNotFoundError(`Game information not found for game ID: ${gameId}`);
         }
         
         // Determine which team is home and which is visiting
@@ -85,7 +101,7 @@ export const initializeLineupTracking = async (gameId: string, sessionId: string
         const visitingTeamData = teamstats.find(t => t.team === gameInfo.visteam);
         
         if (!homeTeamData || !visitingTeamData) {
-            throw new Error(`Could not determine home and visiting teams for game ID: ${gameId}`);
+            throw new ResourceNotFoundError(`Could not determine home and visiting teams for game ID: ${gameId}`);
         }
         
         // Get lineup data for UI display
@@ -96,28 +112,17 @@ export const initializeLineupTracking = async (gameId: string, sessionId: string
             homeTeamData.start_l1, homeTeamData.start_l2, homeTeamData.start_l3,
             homeTeamData.start_l4, homeTeamData.start_l5, homeTeamData.start_l6,
             homeTeamData.start_l7, homeTeamData.start_l8, homeTeamData.start_l9
-        ].filter(Boolean);
+        ].filter(Boolean) as string[];
         
         const visitingPlayerIds = [
             visitingTeamData.start_l1, visitingTeamData.start_l2, visitingTeamData.start_l3,
             visitingTeamData.start_l4, visitingTeamData.start_l5, visitingTeamData.start_l6,
             visitingTeamData.start_l7, visitingTeamData.start_l8, visitingTeamData.start_l9
-        ].filter(Boolean);
+        ].filter(Boolean) as string[];
         
-        // Get player details from allplayers table
+        // Get player details using PlayerService
         const allPlayerIds = [...homePlayerIds, ...visitingPlayerIds];
-        const players = await db('allplayers')
-            .whereIn('id', allPlayerIds)
-            .select('id', 'first', 'last');
-        
-        // Create player lookup map
-        const playerMap = new Map();
-        players.forEach(player => {
-            playerMap.set(player.id, {
-                firstName: player.first || '',
-                lastName: player.last || ''
-            });
-        });
+        const playerMap = await PlayerService.getPlayersByIds(allPlayerIds);
         
         // Create home team lineup with retrosheet_id
         const homeLineup = homePlayerIds.map((playerId, index) => {
@@ -180,6 +185,11 @@ export const constructInitialGameState = async (
     // Get the lineup data for the game
     const lineupData = await getLineupData(gameId);
     
+    // Get runner names if present
+    const runner1Name = firstPlay.br1_pre ? await PlayerService.getPlayerName(firstPlay.br1_pre) : "";
+    const runner2Name = firstPlay.br2_pre ? await PlayerService.getPlayerName(firstPlay.br2_pre) : "";
+    const runner3Name = firstPlay.br3_pre ? await PlayerService.getPlayerName(firstPlay.br3_pre) : "";
+    
     // Return a modified version of the initial state with full game data
     return {
         ...createEmptyBaseballState(),
@@ -188,10 +198,10 @@ export const constructInitialGameState = async (
         game: {
             ...createEmptyBaseballState().game,
             log: logEntries,
-            // Add runners on bases from the first play
-            onFirst: firstPlay.br1_pre || "",
-            onSecond: firstPlay.br2_pre || "",
-            onThird: firstPlay.br3_pre || ""
+            // Add runners on bases with names
+            onFirst: runner1Name || "",
+            onSecond: runner2Name || "",
+            onThird: runner3Name || ""
         },
         home: {
             ...createEmptyBaseballState().home,
@@ -218,6 +228,6 @@ export const constructInitialGameState = async (
                 null
         },
         currentPlay: firstPlay.pn,
-        gameType: 'replay'
+        gameType: GAME_TYPES.REPLAY
     };
 };

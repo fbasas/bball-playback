@@ -17,11 +17,21 @@ function BaseballGame() {
 
   // Status bar visibility state
   const [isStatusBarVisible, setIsStatusBarVisible] = useState(false);
+  
+  // Announcer style state
+  const [announcerStyle, setAnnouncerStyle] = useState<'classic' | 'modern' | 'enthusiastic' | 'poetic'>('classic');
+  
+  // Generate a session ID if not already set
+  const [sessionId] = useState(() => {
+    // Generate a random session ID
+    return `session-${Math.random().toString(36).substring(2, 15)}`;
+  });
 
   // Combined game state object suitable for REST API
   const [gameState, setGameState] = useState<BaseballState>({
     ...createEmptyBaseballState(),
-    gameId: getGameIdFromUrl()
+    gameId: getGameIdFromUrl(),
+    sessionId: sessionId
   });
 
   // API endpoints for game state updates
@@ -77,6 +87,7 @@ function BaseballGame() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'session-id': sessionId
           }
         });
 
@@ -91,10 +102,11 @@ function BaseballGame() {
       } catch (error) {
         console.error('Error initializing game state:', error);
         // Fallback to initial state if API call fails
-        setGameState(prevState => ({
+        setGameState({
           ...createEmptyBaseballState(),
-          gameId: gameId
-        }));
+          gameId: gameId,
+          sessionId: sessionId
+        });
         setRenderedEntryCount(0);
         setIsTypingComplete(false);
       }
@@ -190,10 +202,11 @@ function BaseballGame() {
     }
     
     try {
-      const response = await fetch(`${nextPlayEndpoint}/${gameId}`, {
+      const response = await fetch(`${nextPlayEndpoint}/${gameId}?currentPlay=${gameState.currentPlay}&announcerStyle=${announcerStyle}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'session-id': sessionId
         }
       });
 
@@ -204,13 +217,13 @@ function BaseballGame() {
       const updatedState = await response.json();
       
       // Clear the log panel by resetting the game state with new log entries
-      setGameState(prevState => ({
+      setGameState({
         ...updatedState,
         game: {
           ...updatedState.game,
           log: updatedState.game.log || [], // Ensure log is an array
         }
-      }));
+      });
       
       // Reset the rendered entry count to start fresh
       setRenderedEntryCount(0);
@@ -285,8 +298,25 @@ function BaseballGame() {
         )}
       </div>
 
-      {/* Control Buttons */}
-      <div className="control-buttons-container">
+      {/* Control Buttons and Announcer Style Selector */}
+      <div className="control-panel">
+        {/* Announcer Style Selector */}
+        <div className="announcer-style-selector">
+          <label htmlFor="announcer-style">Announcer Style:</label>
+          <select
+            id="announcer-style"
+            value={announcerStyle}
+            onChange={(e) => setAnnouncerStyle(e.target.value as 'classic' | 'modern' | 'enthusiastic' | 'poetic')}
+          >
+            <option value="classic">Classic (Bob Costas)</option>
+            <option value="modern">Modern (Joe Buck)</option>
+            <option value="enthusiastic">Enthusiastic (Harry Caray)</option>
+            <option value="poetic">Poetic (Vin Scully)</option>
+          </select>
+        </div>
+
+        {/* Control Buttons */}
+        <div className="control-buttons-container">
         <button 
           className="next-play-button" 
           onClick={handleNextPlay}
@@ -300,6 +330,7 @@ function BaseballGame() {
         >
           INFO
         </button>
+        </div>
       </div>
     </div>
   );

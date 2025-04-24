@@ -51,22 +51,51 @@ async function saveCompletionToDb(
 }
 
 /**
+ * Options for generating completions
+ */
+interface CompletionOptions {
+  gameId?: string;
+  announcerStyle?: 'classic' | 'modern' | 'enthusiastic' | 'poetic';
+  retryCount?: number;
+}
+
+/**
+ * Helper function to get the system message for an announcer
+ */
+function getSystemMessageForAnnouncer(announcerStyle: 'classic' | 'modern' | 'enthusiastic' | 'poetic' = 'poetic'): string {
+  const announcers = {
+    'classic': 'Bob Costas',
+    'modern': 'Joe Buck',
+    'enthusiastic': 'Harry Caray',
+    'poetic': 'Vin Scully'
+  };
+  
+  const announcer = announcers[announcerStyle];
+  return `You are a baseball announcer describing plays in the style of ${announcer}.`;
+}
+
+/**
  * Generate a completion using OpenAI's API
  * @param prompt The prompt to send to OpenAI
- * @param gameId The ID of the game
+ * @param options Options for the completion including gameId and announcerStyle
  * @returns The generated text
  * @throws Error if the OpenAI model is not configured
  */
 export async function generateCompletion(
-  prompt: string, 
-  gameId: string = "-1"
+  prompt: string,
+  options: CompletionOptions = {}
 ): Promise<string> {
+  const {
+    gameId = "-1",
+    announcerStyle = 'poetic',
+    retryCount = 0
+  } = options;
   // Check if the model is configured
   if (!config.openai.model) {
     throw new Error('OpenAI model is not configured');
   }
 
-  let retryCount = 0;
+  // Track retry attempts
   const startTime = performance.now();
   let response;
 
@@ -78,7 +107,7 @@ export async function generateCompletion(
         messages: [
           {
             role: 'system',
-            content: 'You are a baseball announcer describing plays in the style of Vin Scully.'
+            content: getSystemMessageForAnnouncer(announcerStyle)
           },
           {
             role: 'user',
