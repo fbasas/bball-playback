@@ -4,6 +4,43 @@ import { PlayData } from '../../../../../common/types/PlayData';
 import { generateCompletion } from '../../../services/openai';
 import { generateNextPlayPrompt, generatePlayByPlayPrompt } from '../../../services/prompts';
 import { translateEvent } from '../../../services/eventTranslation';
+import { db } from '../../../config/database';
+
+/**
+ * Helper function to get a team's display name from the database
+ * @param teamId The team ID
+ * @returns The team's display name (city + nickname)
+ */
+async function getTeamDisplayName(teamId: string): Promise<string> {
+  try {
+    const team = await db('teams').where({ team: teamId }).first();
+    if (team) {
+      return `${team.city || ''} ${team.nickname || ''}`.trim();
+    }
+    return teamId === 'NYA' ? 'New York Yankees' : teamId === 'LAN' ? 'Los Angeles Dodgers' : 'Home Team';
+  } catch (error) {
+    console.error(`Error getting team display name for ${teamId}:`, error);
+    return 'Home Team';
+  }
+}
+
+/**
+ * Helper function to get a team's short name from the database
+ * @param teamId The team ID
+ * @returns The team's short name (nickname)
+ */
+async function getTeamShortName(teamId: string): Promise<string> {
+  try {
+    const team = await db('teams').where({ team: teamId }).first();
+    if (team) {
+      return team.nickname || '';
+    }
+    return teamId === 'NYA' ? 'Yankees' : teamId === 'LAN' ? 'Dodgers' : 'Home';
+  } catch (error) {
+    console.error(`Error getting team short name for ${teamId}:`, error);
+    return 'Home';
+  }
+}
 
 /**
  * Type for announcer styles
@@ -72,8 +109,8 @@ export class CommentaryService {
       },
       home: {
         id: currentState.home.id,
-        displayName: currentState.home.displayName,
-        shortName: currentState.home.shortName,
+        displayName: currentState.home.displayName || await getTeamDisplayName(currentState.home.id),
+        shortName: currentState.home.shortName || await getTeamShortName(currentState.home.id),
         currentBatter: currentState.home.currentBatter,
         currentPitcher: currentState.home.currentPitcher,
         nextBatter: null,
@@ -82,8 +119,8 @@ export class CommentaryService {
       },
       visitors: {
         id: currentState.visitors.id,
-        displayName: currentState.visitors.displayName,
-        shortName: currentState.visitors.shortName,
+        displayName: currentState.visitors.displayName || await getTeamDisplayName(currentState.visitors.id),
+        shortName: currentState.visitors.shortName || await getTeamShortName(currentState.visitors.id),
         currentBatter: currentState.visitors.currentBatter,
         currentPitcher: currentState.visitors.currentPitcher,
         nextBatter: null,
@@ -96,8 +133,22 @@ export class CommentaryService {
       eventString: currentPlay.event
     };
     
+    // Log the state for debugging
+    console.log('[COMMENTARY] SimplifiedBaseballState team info:', JSON.stringify({
+      home: {
+        displayName: simplifiedState.home.displayName,
+        shortName: simplifiedState.home.shortName,
+        runs: simplifiedState.home.runs
+      },
+      visitors: {
+        displayName: simplifiedState.visitors.displayName,
+        shortName: simplifiedState.visitors.shortName,
+        runs: simplifiedState.visitors.runs
+      }
+    }, null, 2));
+    
     // Generate the detailed prompt
-    const prompt = generatePlayByPlayPrompt(simplifiedState, announcerStyle);
+    const prompt = await generatePlayByPlayPrompt(simplifiedState, announcerStyle);
     
     const completionText = skipLLM
       ? "This is a dummy response for testing purposes. LLM calls are being skipped."

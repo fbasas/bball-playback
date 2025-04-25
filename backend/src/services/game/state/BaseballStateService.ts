@@ -2,6 +2,7 @@ import { BaseballState, createEmptyBaseballState } from '../../../../../common/t
 import { PlayData } from '../../../../../common/types/PlayData';
 import { PlayerService } from '../player/PlayerService';
 import { getLineupStateForPlay } from '../lineupTracking';
+import { db } from '../../../config/database';
 
 /**
  * Service for handling baseball state operations
@@ -15,12 +16,26 @@ export class BaseballStateService {
    * @param currentPlayData The current play data
    * @returns A BaseballState object
    */
-  public static createInitialBaseballState(
-    gameId: string, 
-    sessionId: string, 
-    currentPlay: number, 
+  public static async createInitialBaseballState(
+    gameId: string,
+    sessionId: string,
+    currentPlay: number,
     currentPlayData: PlayData
-  ): BaseballState {
+  ): Promise<BaseballState> {
+    // Determine home and visiting team IDs
+    const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
+    const visitingTeamId = currentPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam;
+    
+    // Get team information from the database
+    const homeTeam = await db('teams').where({ team: homeTeamId }).first();
+    const visitingTeam = await db('teams').where({ team: visitingTeamId }).first();
+    
+    // Create display names from city and nickname
+    const homeDisplayName = homeTeam ? `${homeTeam.city || ''} ${homeTeam.nickname || ''}`.trim() : 'Home Team';
+    const homeShortName = homeTeam ? homeTeam.nickname || 'Home' : 'Home';
+    const visitingDisplayName = visitingTeam ? `${visitingTeam.city || ''} ${visitingTeam.nickname || ''}`.trim() : 'Visiting Team';
+    const visitingShortName = visitingTeam ? visitingTeam.nickname || 'Visitors' : 'Visitors';
+    
     return {
       ...createEmptyBaseballState(),
       gameId,
@@ -35,11 +50,15 @@ export class BaseballStateService {
       },
       home: {
         ...createEmptyBaseballState().home,
-        id: currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam
+        id: homeTeamId,
+        displayName: homeDisplayName,
+        shortName: homeShortName
       },
       visitors: {
         ...createEmptyBaseballState().visitors,
-        id: currentPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam
+        id: visitingTeamId,
+        displayName: visitingDisplayName,
+        shortName: visitingShortName
       }
     };
   }

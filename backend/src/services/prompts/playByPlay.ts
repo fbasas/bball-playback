@@ -1,5 +1,7 @@
 import { SimplifiedBaseballState } from '../../../../common/types/SimplifiedBaseballState';
 import Handlebars from 'handlebars';
+import { getLineupStateForPlay } from '../game/lineupTracking';
+import { PlayerService } from '../game/player/PlayerService';
 
 /**
  * Announcer profile for play-by-play commentary
@@ -33,6 +35,11 @@ interface ExtendedBaseballState {
     nextBatter: string | null;
     nextPitcher: string | null;
     runs: number;
+    lineup: Array<{
+      name: string;
+      position: string;
+      battingOrder: number;
+    }>;
   };
   visitors: {
     displayName: string;
@@ -42,6 +49,11 @@ interface ExtendedBaseballState {
     nextBatter: string | null;
     nextPitcher: string | null;
     runs: number;
+    lineup: Array<{
+      name: string;
+      position: string;
+      battingOrder: number;
+    }>;
   };
   currentPlay: number;
   playDescription?: string;
@@ -124,12 +136,27 @@ function registerHandlebarsHelpers() {
  * @param announcerType - The type of announcer to use (classic, modern, enthusiastic, poetic)
  * @returns A prompt string to send to OpenAI for play-by-play commentary generation
  */
-export function generatePlayByPlayPrompt(
-  baseballState: SimplifiedBaseballState, 
+export async function generatePlayByPlayPrompt(
+  baseballState: SimplifiedBaseballState,
   announcerType: keyof typeof DEFAULT_ANNOUNCERS = 'classic'
-): string {
+): Promise<string> {
   // Register Handlebars helpers
   registerHandlebarsHelpers();
+
+  // Debug log the input state
+  console.log('[PROMPT] Input baseball state:', JSON.stringify({
+    gameId: baseballState.gameId,
+    home: {
+      displayName: baseballState.home.displayName,
+      shortName: baseballState.home.shortName,
+      runs: baseballState.home.runs
+    },
+    visitors: {
+      displayName: baseballState.visitors.displayName,
+      shortName: baseballState.visitors.shortName,
+      runs: baseballState.visitors.runs
+    }
+  }, null, 2));
 
   // Create extended state with defaults for missing data
   const extendedState: ExtendedBaseballState = {
@@ -150,7 +177,8 @@ export function generatePlayByPlayPrompt(
       currentPitcher: baseballState.home.currentPitcher,
       nextBatter: baseballState.home.nextBatter,
       nextPitcher: baseballState.home.nextPitcher,
-      runs: 0 // Default value, not in the current API response
+      runs: baseballState.home.runs,
+      lineup: [] // Will be populated below
     },
     visitors: {
       displayName: baseballState.visitors.displayName,
@@ -159,12 +187,73 @@ export function generatePlayByPlayPrompt(
       currentPitcher: baseballState.visitors.currentPitcher,
       nextBatter: baseballState.visitors.nextBatter,
       nextPitcher: baseballState.visitors.nextPitcher,
-      runs: 0 // Default value, not in the current API response
+      runs: baseballState.visitors.runs,
+      lineup: [] // Will be populated below
     },
     currentPlay: baseballState.currentPlay,
     playDescription: baseballState.playDescription || 'Unknown play',
     eventString: baseballState.eventString || ''
   };
+
+  // Debug log the extended state
+  console.log('[PROMPT] Extended state team info:', JSON.stringify({
+    home: {
+      displayName: extendedState.home.displayName,
+      shortName: extendedState.home.shortName,
+      runs: extendedState.home.runs
+    },
+    visitors: {
+      displayName: extendedState.visitors.displayName,
+      shortName: extendedState.visitors.shortName,
+      runs: extendedState.visitors.runs
+    }
+  }, null, 2));
+
+  try {
+    // Get the lineup state for the current play
+    const lineupState = await getLineupStateForPlay(
+      baseballState.gameId,
+      baseballState.sessionId,
+      baseballState.currentPlay
+    );
+
+    if (lineupState) {
+      // Get player names
+      const playerIds = lineupState.players.map(p => p.playerId);
+      const playerMap = await PlayerService.getPlayersByIds(playerIds);
+
+      // Get home and visiting team players
+      const homeTeamPlayers = lineupState.players.filter(p => p.teamId === baseballState.home.id);
+      const visitingTeamPlayers = lineupState.players.filter(p => p.teamId === baseballState.visitors.id);
+
+      // Populate home team lineup
+      extendedState.home.lineup = homeTeamPlayers
+        .sort((a, b) => a.battingOrder - b.battingOrder)
+        .map(player => {
+          const playerInfo = playerMap.get(player.playerId);
+          return {
+            name: playerInfo ? playerInfo.fullName : player.playerId,
+            position: player.position,
+            battingOrder: player.battingOrder
+          };
+        });
+
+      // Populate visiting team lineup
+      extendedState.visitors.lineup = visitingTeamPlayers
+        .sort((a, b) => a.battingOrder - b.battingOrder)
+        .map(player => {
+          const playerInfo = playerMap.get(player.playerId);
+          return {
+            name: playerInfo ? playerInfo.fullName : player.playerId,
+            position: player.position,
+            battingOrder: player.battingOrder
+          };
+        });
+    }
+  } catch (error) {
+    console.error('Error fetching lineup information:', error);
+    // Continue with empty lineups if there's an error
+  }
 
   // Template for the play-by-play prompt
   const promptTemplate = Handlebars.compile(`
@@ -181,10 +270,24 @@ You are an experienced baseball announcer providing play-by-play commentary for 
 - Outs: {{game.outs}}
 - Runners: {{#if game.onFirst}}Runner on first ({{game.onFirst}}){{/if}}{{#if game.onSecond}}{{#if game.onFirst}}, {{/if}}Runner on second ({{game.onSecond}}){{/if}}{{#if game.onThird}}{{#if game.onFirst}}{{#if game.onSecond}}, {{else}}, {{/if}}{{else}}{{#if game.onSecond}}, {{/if}}{{/if}}Runner on third ({{game.onThird}}){{/if}}{{#unless game.onFirst}}{{#unless game.onSecond}}{{#unless game.onThird}}Bases empty{{/unless}}{{/unless}}{{/unless}}
 - Score: {{home.displayName}} {{home.runs}}, {{visitors.displayName}} {{visitors.runs}}
+- Team at bat: {{#if game.isTopInning}}{{visitors.displayName}}{{else}}{{home.displayName}}{{/if}}
+- Team in the field: {{#if game.isTopInning}}{{home.displayName}}{{else}}{{visitors.displayName}}{{/if}}
 
 # Current Matchup
 - At bat: {{#if game.isTopInning}}{{visitors.currentBatter}} ({{visitors.displayName}}){{else}}{{home.currentBatter}} ({{home.displayName}}){{/if}}
 - Pitching: {{#if game.isTopInning}}{{home.currentPitcher}} ({{home.displayName}}){{else}}{{visitors.currentPitcher}} ({{visitors.displayName}}){{/if}}
+- Next batter: {{#if game.isTopInning}}{{visitors.nextBatter}} ({{visitors.displayName}}){{else}}{{home.nextBatter}} ({{home.displayName}}){{/if}}
+
+# Team Lineups
+## {{home.displayName}} Lineup:
+{{#each home.lineup}}
+- {{battingOrder}}. {{name}} ({{position}})
+{{/each}}
+
+## {{visitors.displayName}} Lineup:
+{{#each visitors.lineup}}
+- {{battingOrder}}. {{name}} ({{position}})
+{{/each}}
 
 # Play Result
 - Play description: {{playDescription}}

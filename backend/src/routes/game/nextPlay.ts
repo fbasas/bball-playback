@@ -63,9 +63,35 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             // Convert to SimplifiedBaseballState
             const simplifiedState = createSimplifiedState(gameState, firstPlay);
             
+            // Debug log the game state
+            console.log('[NEXTPLAY-INIT] GameState team info:', JSON.stringify({
+                home: {
+                    displayName: gameState.home.displayName,
+                    shortName: gameState.home.shortName
+                },
+                visitors: {
+                    displayName: gameState.visitors.displayName,
+                    shortName: gameState.visitors.shortName
+                }
+            }, null, 2));
+            
             // Initialize runs
             simplifiedState.home.runs = 0;
             simplifiedState.visitors.runs = 0;
+            
+            // Debug log the simplified state
+            console.log('[NEXTPLAY-INIT] SimplifiedBaseballState team info:', JSON.stringify({
+                home: {
+                    displayName: simplifiedState.home.displayName,
+                    shortName: simplifiedState.home.shortName,
+                    runs: simplifiedState.home.runs
+                },
+                visitors: {
+                    displayName: simplifiedState.visitors.displayName,
+                    shortName: simplifiedState.visitors.shortName,
+                    runs: simplifiedState.visitors.runs
+                }
+            }, null, 2));
             
             // Set next batter and pitcher
             simplifiedState.home.nextBatter = gameState.home.currentBatter || null;
@@ -90,22 +116,43 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         const { currentPlayData, nextPlayData } = await PlayDataService.fetchPlayData(gameId, currentPlay);
         
         // Create initial baseball state
-        let currentState = BaseballStateService.createInitialBaseballState(
-            gameId, 
-            sessionId, 
-            currentPlay, 
+        let currentState = await BaseballStateService.createInitialBaseballState(
+            gameId,
+            sessionId,
+            currentPlay,
             currentPlayData
         );
         
         // Process lineup state
         currentState = await BaseballStateService.processLineupState(
-            gameId, 
-            sessionId, 
-            currentPlay, 
-            currentState, 
-            currentPlayData, 
+            gameId,
+            sessionId,
+            currentPlay,
+            currentState,
+            currentPlayData,
             nextPlayData
         );
+        
+        // Calculate scores
+        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScore(
+            gameId,
+            currentPlay,
+            currentPlayData,
+            nextPlayData
+        );
+        
+        // Determine home team ID
+        const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
+
+        // Update the baseball state with the calculated scores BEFORE the play
+        // This ensures the stats.runs property is updated before creating the simplified state
+        if (isHomeTeam(nextPlayData, currentState.home.id)) {
+            currentState.home.stats.runs = homeScoreBeforePlay;
+            currentState.visitors.stats.runs = visitorScoreBeforePlay;
+        } else {
+            currentState.home.stats.runs = visitorScoreBeforePlay;
+            currentState.visitors.stats.runs = homeScoreBeforePlay;
+        }
         
         // Generate detailed play-by-play commentary
         const logEntries = await CommentaryService.generateDetailedPlayCompletion(
@@ -138,32 +185,26 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         } catch (error) {
             throw new EventTranslationError('Failed to translate event data');
         }
-        
-        // Calculate scores
-        const { homeScoreAfterPlay, visitorScoreAfterPlay } = await ScoreService.calculateScore(
-            gameId, 
-            currentPlay, 
-            currentPlayData, 
-            nextPlayData
-        );
-        
-        // Determine home team ID
-        const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
 
         // Create a simplified response
         const simplifiedState = createSimplifiedState(currentState, nextPlayData, playDescription);
         
+        // Debug log the simplified state
+        console.log('[NEXTPLAY] SimplifiedBaseballState team info:', JSON.stringify({
+            home: {
+                displayName: simplifiedState.home.displayName,
+                shortName: simplifiedState.home.shortName,
+                runs: simplifiedState.home.runs
+            },
+            visitors: {
+                displayName: simplifiedState.visitors.displayName,
+                shortName: simplifiedState.visitors.shortName,
+                runs: simplifiedState.visitors.runs
+            }
+        }, null, 2));
+        
         // Set log entries
         simplifiedState.game.log = logEntries;
-        
-        // Update scores
-        if (isHomeTeam(nextPlayData, simplifiedState.home.id)) {
-            simplifiedState.home.runs = homeScoreAfterPlay;
-            simplifiedState.visitors.runs = visitorScoreAfterPlay;
-        } else {
-            simplifiedState.home.runs = visitorScoreAfterPlay;
-            simplifiedState.visitors.runs = homeScoreAfterPlay;
-        }
         
         // Update next batter and pitcher
         updateNextBatterAndPitcher(simplifiedState, nextPlayData);

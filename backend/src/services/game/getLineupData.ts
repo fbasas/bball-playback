@@ -197,14 +197,14 @@ export async function getLineupData(gameId: string): Promise<LineupData> {
     return {
       homeTeam: {
         id: homeTeam.team || '',
-        displayName: homeTeam.name || '',
+        displayName: `${homeTeam.city || ''} ${homeTeam.nickname || ''}`.trim(),
         shortName: homeTeam.nickname || '',
         currentPitcher: homePitcherName,
         lineup: homeLineup
       },
       visitingTeam: {
         id: visitingTeam.team || '',
-        displayName: visitingTeam.name || '',
+        displayName: `${visitingTeam.city || ''} ${visitingTeam.nickname || ''}`.trim(),
         shortName: visitingTeam.nickname || '',
         currentPitcher: visitingPitcherName,
         lineup: visitingLineup

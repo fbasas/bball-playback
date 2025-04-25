@@ -354,17 +354,16 @@ async function main() {
         const maxPlays = args.limit || Infinity;
         
         while (playCount < maxPlays) {
-          // Display current game situation
-          // Store initial team names
-          const homeTeamName = state.home.displayName || 'Home';
-          const visitingTeamName = state.visitors.displayName || 'Visitors';
-          
-          // Pass state directly, score is inside it
-          displayGameSituation(state, homeTeamName, visitingTeamName);
-          
           // Get user action or auto-advance
           let useLLM = false;
           if (!args.auto) {
+            // Store team names for display
+            const homeTeamName = state.home.displayName || 'Home';
+            const visitingTeamName = state.visitors.displayName || 'Visitors';
+            
+            // Display current game situation before getting user action
+            displayGameSituation(state, homeTeamName, visitingTeamName);
+            
             const action = await promptForNextAction();
             if (action === 'lineups') {
               try {
@@ -376,10 +375,16 @@ async function main() {
               continue; // Show options again
             }
             useLLM = action === 'next-llm';
+          } else {
+            // In auto mode, display game situation before advancing
+            const homeTeamName = state.home.displayName || 'Home';
+            const visitingTeamName = state.visitors.displayName || 'Visitors';
+            displayGameSituation(state, homeTeamName, visitingTeamName);
           }
           
           // Get next play
           try {
+            // Get the next play from the backend
             state = await getNextPlay(gameId, currentPlay, useLLM, sessionId);
             currentPlay = state.currentPlay;
             

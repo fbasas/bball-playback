@@ -43,8 +43,12 @@ export function createSimplifiedState(
     },
     home: {
       id: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.home.id : baseballState.visitors.id,
-      displayName: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.home.displayName : baseballState.visitors.displayName,
-      shortName: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.home.shortName : baseballState.visitors.shortName,
+      displayName: isHomeTeam(nextPlayData, baseballState.home.id)
+        ? (baseballState.home.displayName || 'Home Team')
+        : (baseballState.visitors.displayName || 'Home Team'),
+      shortName: isHomeTeam(nextPlayData, baseballState.home.id)
+        ? (baseballState.home.shortName || 'Home')
+        : (baseballState.visitors.shortName || 'Home'),
       currentBatter: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.home.currentBatter : baseballState.visitors.currentBatter,
       currentPitcher: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.home.currentPitcher : baseballState.visitors.currentPitcher,
       nextBatter: null,
@@ -53,8 +57,12 @@ export function createSimplifiedState(
     },
     visitors: {
       id: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.visitors.id : baseballState.home.id,
-      displayName: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.visitors.displayName : baseballState.home.displayName,
-      shortName: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.visitors.shortName : baseballState.home.shortName,
+      displayName: isHomeTeam(nextPlayData, baseballState.home.id)
+        ? (baseballState.visitors.displayName || 'Visiting Team')
+        : (baseballState.home.displayName || 'Visiting Team'),
+      shortName: isHomeTeam(nextPlayData, baseballState.home.id)
+        ? (baseballState.visitors.shortName || 'Visitors')
+        : (baseballState.home.shortName || 'Visitors'),
       currentBatter: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.visitors.currentBatter : baseballState.home.currentBatter,
       currentPitcher: isHomeTeam(nextPlayData, baseballState.home.id) ? baseballState.visitors.currentPitcher : baseballState.home.currentPitcher,
       nextBatter: null,
