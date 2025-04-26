@@ -70,7 +70,7 @@ async function runExample() {
     console.log(`\n=== ${style.toUpperCase()} ANNOUNCER STYLE ===\n`);
     
     // Generate the prompt
-    const prompt = await generatePlayByPlayPrompt(mockState, style);
+    const prompt = await generatePlayByPlayPrompt(mockState, null, style);
     
     // Print the prompt (for demonstration purposes)
     console.log('Generated Prompt:');

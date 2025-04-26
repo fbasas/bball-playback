@@ -31,11 +31,12 @@ export class ScoreService {
     nextPlayData: PlayData
   ): Promise<ScoreResult> {
     try {
-      // Fetch all plays up to and including the current play to get score before next play
+      // Fetch all plays up to but NOT including the current play to get score before current play
+      // This ensures we don't include the runs from the current play in the "before" score
       const previousPlays = await db('plays')
         .select('gid', 'pn', 'top_bot', 'batteam', 'runs')
         .where({ gid: gameId })
-        .where('pn', '<=', currentPlay)
+        .where('pn', '<', currentPlay)  // Using '<' instead of '<=' to exclude the current play
         .orderBy('pn', 'asc');
 
       let homeScoreBeforePlay = 0;

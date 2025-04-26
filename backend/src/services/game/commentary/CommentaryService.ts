@@ -94,8 +94,8 @@ export class CommentaryService {
     gameId: string,
     announcerStyle: AnnouncerStyle = 'classic'
   ): Promise<string[]> {
-    // Create a simplified baseball state from the current state
-    const simplifiedState: SimplifiedBaseballState = {
+    // Create a simplified baseball state for AFTER the play (current state)
+    const afterState: SimplifiedBaseballState = {
       gameId: currentState.gameId,
       sessionId: currentState.sessionId,
       game: {
@@ -133,22 +133,95 @@ export class CommentaryService {
       eventString: currentPlay.event
     };
     
-    // Log the state for debugging
-    console.log('[COMMENTARY] SimplifiedBaseballState team info:', JSON.stringify({
+    // Create a simplified baseball state for BEFORE the play
+    // We'll use the pre-play data from the currentPlay object
+    const beforeState: SimplifiedBaseballState = {
+      ...afterState,
+      game: {
+        ...afterState.game,
+        inning: currentPlay.inning,
+        isTopInning: currentPlay.top_bot === 0,
+        outs: currentPlay.outs_pre,
+        onFirst: currentPlay.br1_pre ? await this.getPlayerName(currentPlay.br1_pre) : '',
+        onSecond: currentPlay.br2_pre ? await this.getPlayerName(currentPlay.br2_pre) : '',
+        onThird: currentPlay.br3_pre ? await this.getPlayerName(currentPlay.br3_pre) : ''
+      },
       home: {
-        displayName: simplifiedState.home.displayName,
-        shortName: simplifiedState.home.shortName,
-        runs: simplifiedState.home.runs
+        ...afterState.home,
+        // Use the correct pre-play scores from the currentState
+        // The currentState already has the correct pre-play scores from ScoreService
+        runs: currentState.home.stats.runs
       },
       visitors: {
-        displayName: simplifiedState.visitors.displayName,
-        shortName: simplifiedState.visitors.shortName,
-        runs: simplifiedState.visitors.runs
+        ...afterState.visitors,
+        // Use the correct pre-play scores from the currentState
+        // The currentState already has the correct pre-play scores from ScoreService
+        runs: currentState.visitors.stats.runs
+      }
+    };
+    
+    // Set the current batter in the before state
+    if (currentPlay.batter) {
+      const batterName = await this.getPlayerName(currentPlay.batter);
+      if (currentPlay.top_bot === 0) {
+        beforeState.visitors.currentBatter = batterName;
+      } else {
+        beforeState.home.currentBatter = batterName;
+      }
+    }
+    
+    // Set the current pitcher in the before state
+    if (currentPlay.pitcher) {
+      const pitcherName = await this.getPlayerName(currentPlay.pitcher);
+      if (currentPlay.top_bot === 0) {
+        beforeState.home.currentPitcher = pitcherName;
+      } else {
+        beforeState.visitors.currentPitcher = pitcherName;
+      }
+    }
+    
+    // Log the states for debugging
+    console.log('[COMMENTARY] Current state team info (pre-play scores):', JSON.stringify({
+      home: {
+        displayName: currentState.home.displayName,
+        shortName: currentState.home.shortName,
+        runs: currentState.home.stats.runs
+      },
+      visitors: {
+        displayName: currentState.visitors.displayName,
+        shortName: currentState.visitors.shortName,
+        runs: currentState.visitors.stats.runs
       }
     }, null, 2));
     
-    // Generate the detailed prompt
-    const prompt = await generatePlayByPlayPrompt(simplifiedState, announcerStyle);
+    console.log('[COMMENTARY] Before state team info:', JSON.stringify({
+      home: {
+        displayName: beforeState.home.displayName,
+        shortName: beforeState.home.shortName,
+        runs: beforeState.home.runs
+      },
+      visitors: {
+        displayName: beforeState.visitors.displayName,
+        shortName: beforeState.visitors.shortName,
+        runs: beforeState.visitors.runs
+      }
+    }, null, 2));
+    
+    console.log('[COMMENTARY] After state team info:', JSON.stringify({
+      home: {
+        displayName: afterState.home.displayName,
+        shortName: afterState.home.shortName,
+        runs: afterState.home.runs
+      },
+      visitors: {
+        displayName: afterState.visitors.displayName,
+        shortName: afterState.visitors.shortName,
+        runs: afterState.visitors.runs
+      }
+    }, null, 2));
+    
+    // Generate the detailed prompt with both before and after states
+    const prompt = await generatePlayByPlayPrompt(afterState, beforeState, announcerStyle);
     
     const completionText = skipLLM
       ? "This is a dummy response for testing purposes. LLM calls are being skipped."
@@ -168,5 +241,23 @@ export class CommentaryService {
       .split('\n')
       .filter(line => line.trim() !== '')
       .map(line => line.trim());
+  }
+  
+  /**
+   * Helper method to get a player's full name from their ID
+   * @param playerId The player ID
+   * @returns The player's full name
+   */
+  private static async getPlayerName(playerId: string): Promise<string> {
+    try {
+      const player = await db('players').where({ retrosheet_id: playerId }).first();
+      if (player) {
+        return `${player.first_name} ${player.last_name}`.trim();
+      }
+      return playerId;
+    } catch (error) {
+      console.error(`Error getting player name for ${playerId}:`, error);
+      return playerId;
+    }
   }
 }
