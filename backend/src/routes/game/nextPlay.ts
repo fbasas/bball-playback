@@ -148,24 +148,70 @@ export const getNextPlay: RequestHandler = async (req, res, next) => {
         );
         
         // Calculate scores using the optimized method
-        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScoreOptimized(
+        const scoreResult = await ScoreService.calculateScoreOptimized(
             gameId,
             currentPlay,
             currentPlayData,
             nextPlayData
         );
         
-        // Determine home team ID
+        // Extract scores from the result
+        const {
+            homeScoreBeforePlay,
+            visitorScoreBeforePlay,
+            homeScoreAfterPlay,
+            visitorScoreAfterPlay
+        } = scoreResult;
+        
+        routeLogger.debug('Score calculation result', {
+            homeScoreBeforePlay,
+            visitorScoreBeforePlay,
+            homeScoreAfterPlay,
+            visitorScoreAfterPlay,
+            currentPlay,
+            currentPlayData: {
+                pn: currentPlayData.pn,
+                batter: currentPlayData.batter,
+                event: currentPlayData.event,
+                runs: currentPlayData.runs
+            }
+        });
+        
+        // Determine home team ID for the current play
         const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
 
-        // Update the baseball state with the calculated scores BEFORE the play
-        // This ensures the stats.runs property is updated before creating the simplified state
+        // Update the baseball state with the calculated scores AFTER the play
+        // This ensures the stats.runs property shows the current score after the previous play
+        routeLogger.debug('Team IDs', {
+            homeStateId: currentState.home.id,
+            visitorStateId: currentState.visitors.id,
+            nextPlayHomeTeam: isHomeTeam(nextPlayData, currentState.home.id) ? 'Yes' : 'No',
+            nextPlayData: {
+                batteam: nextPlayData.batteam,
+                pitteam: nextPlayData.pitteam,
+                top_bot: nextPlayData.top_bot
+            }
+        });
+        
+        // Use the "after" scores
         if (isHomeTeam(nextPlayData, currentState.home.id)) {
-            currentState.home.stats.runs = homeScoreBeforePlay;
-            currentState.visitors.stats.runs = visitorScoreBeforePlay;
+            currentState.home.stats.runs = homeScoreAfterPlay;
+            currentState.visitors.stats.runs = visitorScoreAfterPlay;
+            routeLogger.debug('Setting scores (home team matches)', {
+                homeTeam: currentState.home.id,
+                homeScore: homeScoreAfterPlay,
+                visitorTeam: currentState.visitors.id,
+                visitorScore: visitorScoreAfterPlay
+            });
         } else {
-            currentState.home.stats.runs = visitorScoreBeforePlay;
-            currentState.visitors.stats.runs = homeScoreBeforePlay;
+            currentState.home.stats.runs = visitorScoreAfterPlay;
+            currentState.visitors.stats.runs = homeScoreAfterPlay;
+            routeLogger.debug('Setting scores (home team does not match)', {
+                homeTeam: currentState.home.id,
+                homeScore: visitorScoreAfterPlay,
+                visitorTeam: currentState.visitors.id,
+                visitorScore: homeScoreAfterPlay
+            });
         }
         
         // Generate detailed play-by-play commentary

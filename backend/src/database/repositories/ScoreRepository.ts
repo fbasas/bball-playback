@@ -115,9 +115,9 @@ export class ScoreRepository extends CachedRepository<any, string> {
    * @returns A ScoreResult object with scores before and after the play
    */
   async calculateScoreOptimized(
-    gameId: string, 
-    currentPlay: number, 
-    currentPlayData: PlayData, 
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
     nextPlayData: PlayData
   ): Promise<ScoreResult> {
     const cacheKey = `${this.cacheKeyPrefix}:${gameId}:${currentPlay}:optimized`;
@@ -129,20 +129,20 @@ export class ScoreRepository extends CachedRepository<any, string> {
         return cachedResult;
       }
       
-      // Determine home and visiting team IDs
-      const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
-      const visitingTeamId = currentPlayData.top_bot === 0 ? currentPlayData.batteam : currentPlayData.pitteam;
+      // Determine home and visiting team IDs using nextPlayData for consistency with nextPlay.ts
+      const homeTeamId = nextPlayData.top_bot === 0 ? nextPlayData.pitteam : nextPlayData.batteam;
+      const visitingTeamId = nextPlayData.top_bot === 0 ? nextPlayData.batteam : nextPlayData.pitteam;
       
-      // Use a single query to calculate the sum of runs for each team up to the current play
+      // Use a single query to calculate the sum of runs for each team up to AND INCLUDING the current play
       const [homeScoreResult, visitorScoreResult] = await Promise.all([
         db('plays')
           .where({ gid: gameId, batteam: homeTeamId })
-          .where('pn', '<', currentPlay)
+          .where('pn', '<=', currentPlay) // Include current play in score calculation
           .sum('runs as total')
           .first(),
         db('plays')
           .where({ gid: gameId, batteam: visitingTeamId })
-          .where('pn', '<', currentPlay)
+          .where('pn', '<=', currentPlay) // Include current play in score calculation
           .sum('runs as total')
           .first()
       ]);
@@ -171,6 +171,8 @@ export class ScoreRepository extends CachedRepository<any, string> {
         homeScoreAfterPlay,
         visitorScoreAfterPlay
       };
+      
+      console.log(`[DEBUG] Score result: Home before: ${homeScoreBeforePlay}, Home after: ${homeScoreAfterPlay}, Visitor before: ${visitorScoreBeforePlay}, Visitor after: ${visitorScoreAfterPlay}`);
       
       // Cache the result
       this.entityCache.set(cacheKey, result);
