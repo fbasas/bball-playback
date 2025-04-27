@@ -1,7 +1,7 @@
 import express from 'express';
-import { createGame } from './createGame';
+import { createGameRouter } from './createGame';
 import { initGame } from './initGame';
-import { getNextPlay } from './nextPlay';
+import { nextPlayRouter } from './nextPlayWithValidation';
 import { getGameInfo } from './gameInfo';
 import { announceLineups } from './announceLineups';
 import { checkSubstitutions } from './checkSubstitutions';
@@ -13,9 +13,11 @@ import {
 
 const router = express.Router();
 
-router.post('/createGame', createGame);
+// Use the createGame router which includes validation middleware
+router.use('/createGame', createGameRouter);
 router.get('/init/:gameId', initGame);
-router.get('/next/:gameId', getNextPlay);
+// Use the nextPlay router which includes validation middleware
+router.use('/next', nextPlayRouter);
 router.get('/info/:gid', getGameInfo);
 router.get('/announceLineups/:gameId', announceLineups);
 router.get('/checkSubstitutions/:gameId', checkSubstitutions);

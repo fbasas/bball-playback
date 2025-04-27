@@ -17,7 +17,13 @@ const knexConfig: { [key: string]: Knex.Config } = {
     },
     pool: {
       min: 2,
-      max: 10
+      max: 20,
+      acquireTimeoutMillis: 60000, // 60 seconds
+      createTimeoutMillis: 30000, // 30 seconds
+      idleTimeoutMillis: 30000, // 30 seconds
+      reapIntervalMillis: 1000, // 1 second
+      createRetryIntervalMillis: 200, // 0.2 seconds
+      propagateCreateError: false // Don't propagate pool creation errors
     },
     migrations: {
       tableName: 'knex_migrations',
@@ -39,8 +45,14 @@ const knexConfig: { [key: string]: Knex.Config } = {
       charset: 'utf8mb4'
     },
     pool: {
-      min: 2,
-      max: 10
+      min: 5,
+      max: 30,
+      acquireTimeoutMillis: 60000, // 60 seconds
+      createTimeoutMillis: 30000, // 30 seconds
+      idleTimeoutMillis: 30000, // 30 seconds
+      reapIntervalMillis: 1000, // 1 second
+      createRetryIntervalMillis: 200, // 0.2 seconds
+      propagateCreateError: false // Don't propagate pool creation errors
     },
     migrations: {
       tableName: 'knex_migrations',

@@ -1,78 +1,66 @@
-interface DatabaseConfig {
-    host: string;
-    port: number;
-    database: string;
-    user: string;
-    password: string;
+import { getEnvironmentConfig, getEnvironment } from './environments';
+import { validateConfig } from './validation';
+import { initializeFeatureFlags } from './featureFlags';
+import { initializeSecretManager, getRequiredSecret } from './secrets';
+import { logger } from '../core/logging';
+
+// Initialize the secret manager
+initializeSecretManager({
+  useEnvVars: true,
+  secretsDir: process.env.SECRETS_DIR,
+  useCache: true
+});
+
+// Get the environment configuration
+const environmentConfig = getEnvironmentConfig();
+
+// Validate the configuration
+const validatedConfig = validateConfig(environmentConfig);
+
+// Initialize feature flags
+const featureFlagService = initializeFeatureFlags(validatedConfig.featureFlags || {});
+
+// Log the current environment and configuration
+logger.info('Application configuration loaded', {
+  environment: validatedConfig.environment,
+  featureFlags: Object.keys(validatedConfig.featureFlags || {})
+});
+
+// Export the validated configuration
+export const config = validatedConfig;
+
+// Export the current environment
+export const environment = getEnvironment();
+
+// Export a function to check if a feature is enabled
+export function isFeatureEnabled(featureName: string, context?: { userId?: string; groups?: string[] }): boolean {
+  return featureFlagService.isEnabled(featureName, context);
 }
 
-interface OpenAIConfig {
-    apiKey: string;
-    model: string;
-    maxTokens: number;
-    temperature: number;
+// Export a function to get all feature flags
+export function getAllFeatureFlags() {
+  return featureFlagService.getAllFlags();
 }
 
-interface Config {
-    database: DatabaseConfig;
-    port: number;
-    openai: OpenAIConfig;
+// Export a function to update a feature flag
+export function updateFeatureFlag(featureName: string, enabled: boolean, options?: Partial<{
+  rolloutPercentage: number;
+  allowedUsers: string[];
+  allowedGroups: string[];
+  expiresAt: Date;
+}>) {
+  const currentFlag = featureFlagService.getFlag(featureName) || { enabled: false };
+  
+  featureFlagService.updateFlag(featureName, {
+    ...currentFlag,
+    enabled,
+    ...(options || {})
+  });
+  
+  logger.info(`Feature flag "${featureName}" updated`, { enabled, options });
 }
 
-// Configuration for different environments
-const configs: Record<string, Config> = {
-    development: {
-        database: {
-            host: process.env.DB_HOST || 'localhost',
-            port: parseInt(process.env.DB_PORT || '3306'),
-            database: process.env.DB_NAME || 'database_name',
-            user: process.env.DB_USER || 'username',
-            password: process.env.DB_PASSWORD || 'password'
-        },
-        port: parseInt(process.env.PORT || '3001'),
-        openai: {
-            apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || '',
-            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
-            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
-        }
-    },
-    production: {
-        database: {
-            host: process.env.DB_HOST || 'localhost',
-            port: parseInt(process.env.DB_PORT || '3306'),
-            database: process.env.DB_NAME || 'database_name',
-            user: process.env.DB_USER || 'username',
-            password: process.env.DB_PASSWORD || 'password'
-        },
-        port: parseInt(process.env.PORT || '3001'),
-        openai: {
-            apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || '',
-            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
-            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
-        }
-    },
-    test: {
-        database: {
-            host: process.env.TEST_DB_HOST || 'localhost',
-            port: parseInt(process.env.TEST_DB_PORT || '3306'),
-            database: process.env.TEST_DB_NAME || 'test_database_name',
-            user: process.env.TEST_DB_USER || 'username',
-            password: process.env.TEST_DB_PASSWORD || 'password'
-        },
-        port: parseInt(process.env.TEST_PORT || '3001'),
-        openai: {
-            apiKey: process.env.OPENAI_API_KEY || '',
-            model: process.env.OPENAI_MODEL || '',
-            maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '1000'),
-            temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7')
-        }
-    }
-};
-
-// Get the current environment
-const env = process.env.NODE_ENV || 'development';
-
-// Export the configuration for the current environment
-export const config = configs[env];
+// Export a function to get a secret
+export async function getSecret(key: string): Promise<string | undefined> {
+  return getRequiredSecret(key);
+}

@@ -124,6 +124,10 @@ export class LineupChangeDetector {
     );
   }
 
+  /**
+   * Detects all lineup changes between the current play and next play
+   * This method orchestrates the detection of different types of changes
+   */
   private async detectLineupChanges(): Promise<void> {
     if (!this.latestState) return;
 
@@ -132,155 +136,320 @@ export class LineupChangeDetector {
     await this.detectFieldingChanges();
   }
 
+  /**
+   * Detects if there was a pitching change between plays
+   * A pitching change is detected when the pitcher ID changes and it's not a half-inning change
+   */
   private async detectPitchingChange(): Promise<void> {
+    // Skip if pitcher didn't change or if it's a half-inning change (expected pitcher change)
     if (this.currentPlay.pitcher === this.nextPlay.pitcher || this.isHalfInningChange) {
       return;
     }
 
     console.log(`[LINEUP] Pitcher change detected: ${this.currentPlay.pitcher} -> ${this.nextPlay.pitcher}`);
+    
+    // Get player names for the change description
     const pitcherName = await this.getPlayerName(this.nextPlay.pitcher);
     const oldPitcherName = await this.getPlayerName(this.currentPlay.pitcher);
+    
+    // Determine which team the pitcher belongs to
     const teamId = this.nextPlay.top_bot === 0 ? this.nextPlay.pitteam : this.nextPlay.batteam;
 
-    this.changes.push({
-      changeType: 'PITCHING_CHANGE',
-      playerInId: String(this.nextPlay.pitcher),
-      playerOutId: String(this.currentPlay.pitcher),
-      teamId: String(teamId),
-      description: `Pitching change: ${pitcherName} replaces ${oldPitcherName}`
-    });
+    // Record the pitching change
+    this.changes.push(this.createPitchingChangeRecord(
+      String(this.nextPlay.pitcher),
+      String(this.currentPlay.pitcher),
+      String(teamId),
+      pitcherName,
+      oldPitcherName
+    ));
   }
 
+  /**
+   * Creates a pitching change record with the given information
+   */
+  private createPitchingChangeRecord(
+    newPitcherId: string,
+    oldPitcherId: string,
+    teamId: string,
+    newPitcherName: string,
+    oldPitcherName: string
+  ): LineupChangeData {
+    return {
+      changeType: 'PITCHING_CHANGE',
+      playerInId: newPitcherId,
+      playerOutId: oldPitcherId,
+      teamId: teamId,
+      description: `Pitching change: ${newPitcherName} replaces ${oldPitcherName}`
+    };
+  }
+
+  /**
+   * Detects if there was a batter substitution between plays
+   * A batter substitution is detected when the next batter is different from the expected next batter
+   * and the next batter is not already in the lineup
+   */
   private async detectBatterChange(): Promise<void> {
     if (!this.latestState) return;
 
+    // Get the current batting order for the team at bat
     const battingTeamId = this.nextPlay.batteam;
-    const currentBattingOrder = this.latestState.players
-      .filter(p => p.teamId === battingTeamId)
-      .sort((a, b) => a.battingOrder - b.battingOrder);
+    const currentBattingOrder = this.getBattingOrderForTeam(battingTeamId);
 
-    const currentBatterIndex = currentBattingOrder.findIndex(p => p.isCurrentBatter);
-    const expectedNextBatterIndex = (currentBatterIndex + 1) % 9;
-    const expectedNextBatter = currentBattingOrder[expectedNextBatterIndex];
+    // Find the expected next batter based on the current batter
+    const { expectedNextBatter, expectedNextBatterIndex } = this.determineExpectedNextBatter(currentBattingOrder);
 
-    // Check if the next batter is different from what we expect
+    // If we can't determine the expected next batter, skip detection
     if (!expectedNextBatter) {
       console.log(`[LINEUP] No expected next batter found, skipping batter change detection`);
       return;
     }
     
-    // Check if the actual next batter matches what we expect
+    // If the actual next batter matches what we expect, no substitution occurred
     if (this.nextPlay.batter === expectedNextBatter.playerId) {
       console.log(`[LINEUP] Next batter matches expected: ${expectedNextBatter.playerId}`);
       return;
     }
     
-    // Check if the next batter already exists in the lineup
-    const existingPlayerWithSameId = currentBattingOrder.find(p => p.playerId === this.nextPlay.batter);
-    if (existingPlayerWithSameId) {
-      console.log(`[LINEUP] Batter ${this.nextPlay.batter} already exists in lineup at position ${existingPlayerWithSameId.battingOrder}, not a substitution`);
+    // Check if the next batter already exists in the lineup (not a substitution)
+    if (this.isPlayerAlreadyInLineup(currentBattingOrder, this.nextPlay.batter)) {
       return;
     }
 
+    // At this point, we've detected a substitution
     console.log(`[LINEUP] Batter substitution detected: Expected ${expectedNextBatter.playerId}, Actual ${this.nextPlay.batter}`);
+    
+    // Get player names for the change description
     const newBatterName = await this.getPlayerName(this.nextPlay.batter);
     const oldBatterName = await this.getPlayerName(expectedNextBatter.playerId);
 
-    this.changes.push({
-      changeType: 'SUBSTITUTION',
-      playerInId: String(this.nextPlay.batter),
-      playerOutId: expectedNextBatter.playerId,
-      battingOrderFrom: expectedNextBatter.battingOrder,
-      battingOrderTo: expectedNextBatter.battingOrder,
-      teamId: String(battingTeamId),
-      description: `Batting substitution: ${newBatterName} replaces ${oldBatterName} in the lineup`
-    });
+    // Record the batter substitution
+    this.changes.push(this.createBatterSubstitutionRecord(
+      String(this.nextPlay.batter),
+      expectedNextBatter.playerId,
+      expectedNextBatter.battingOrder,
+      String(battingTeamId),
+      newBatterName,
+      oldBatterName
+    ));
   }
 
+  /**
+   * Gets the batting order for a specific team, sorted by batting order
+   */
+  private getBattingOrderForTeam(teamId: string): LineupPlayerData[] {
+    return this.latestState!.players
+      .filter(p => p.teamId === teamId)
+      .sort((a, b) => a.battingOrder - b.battingOrder);
+  }
+
+  /**
+   * Determines the expected next batter based on the current batting order
+   */
+  private determineExpectedNextBatter(battingOrder: LineupPlayerData[]): {
+    expectedNextBatter: LineupPlayerData | undefined,
+    expectedNextBatterIndex: number
+  } {
+    const currentBatterIndex = battingOrder.findIndex(p => p.isCurrentBatter);
+    const expectedNextBatterIndex = (currentBatterIndex + 1) % 9;
+    const expectedNextBatter = battingOrder[expectedNextBatterIndex];
+    
+    return { expectedNextBatter, expectedNextBatterIndex };
+  }
+
+  /**
+   * Checks if a player is already in the lineup
+   */
+  private isPlayerAlreadyInLineup(battingOrder: LineupPlayerData[], playerId: string): boolean {
+    const existingPlayerWithSameId = battingOrder.find(p => p.playerId === playerId);
+    if (existingPlayerWithSameId) {
+      console.log(`[LINEUP] Batter ${playerId} already exists in lineup at position ${existingPlayerWithSameId.battingOrder}, not a substitution`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Creates a batter substitution record with the given information
+   */
+  private createBatterSubstitutionRecord(
+    newBatterId: string,
+    oldBatterId: string,
+    battingOrder: number,
+    teamId: string,
+    newBatterName: string,
+    oldBatterName: string
+  ): LineupChangeData {
+    return {
+      changeType: 'SUBSTITUTION',
+      playerInId: newBatterId,
+      playerOutId: oldBatterId,
+      battingOrderFrom: battingOrder,
+      battingOrderTo: battingOrder,
+      teamId: teamId,
+      description: `Batting substitution: ${newBatterName} replaces ${oldBatterName} in the lineup`
+    };
+  }
+
+  /**
+   * Detects if there were any fielding changes between plays
+   * A fielding change is detected when a fielder at a specific position changes
+   * and it's not a half-inning change
+   */
   private async detectFieldingChanges(): Promise<void> {
+    // Skip fielding change detection during half-inning changes
     if (this.isHalfInningChange) return;
 
+    // Check each fielding position (2-9, where 1 is pitcher handled separately)
     for (let i = 2; i <= 9; i++) {
-      const fieldKey = `f${i}` as keyof PlayData;
-      const currentFielderId = this.currentPlay[fieldKey];
-      const nextFielderId = this.nextPlay[fieldKey];
-
-      if (!currentFielderId || !nextFielderId || currentFielderId === nextFielderId) {
-        continue;
-      }
-
-      console.log(`[LINEUP] Fielding change detected at position ${i}: ${currentFielderId} -> ${nextFielderId}`);
-      const fielderName = await this.getPlayerName(nextFielderId);
-      const fieldingTeamId = this.nextPlay.top_bot === 0 ? this.nextPlay.pitteam : this.nextPlay.batteam;
-
-      this.changes.push({
-        changeType: 'POSITION_CHANGE',
-        playerInId: String(nextFielderId),
-        playerOutId: String(currentFielderId),
-        positionFrom: `${i}`,
-        positionTo: `${i}`,
-        teamId: String(fieldingTeamId),
-        description: `Fielding change: ${fielderName} replaces ${currentFielderId} at position ${i}`
-      });
+      await this.detectFieldingChangeAtPosition(i);
     }
   }
 
+  /**
+   * Detects if there was a fielding change at a specific position
+   */
+  private async detectFieldingChangeAtPosition(position: number): Promise<void> {
+    const fieldKey = `f${position}` as keyof PlayData;
+    const currentFielderId = this.currentPlay[fieldKey];
+    const nextFielderId = this.nextPlay[fieldKey];
+
+    // Skip if either fielder ID is missing or if they're the same
+    if (!currentFielderId || !nextFielderId || currentFielderId === nextFielderId) {
+      return;
+    }
+
+    console.log(`[LINEUP] Fielding change detected at position ${position}: ${currentFielderId} -> ${nextFielderId}`);
+    
+    // Get the new fielder's name for the change description
+    const fielderName = await this.getPlayerName(nextFielderId);
+    
+    // Determine which team the fielder belongs to
+    const fieldingTeamId = this.nextPlay.top_bot === 0 ? this.nextPlay.pitteam : this.nextPlay.batteam;
+
+    // Record the fielding change
+    this.changes.push(this.createFieldingChangeRecord(
+      String(nextFielderId),
+      String(currentFielderId),
+      position,
+      String(fieldingTeamId),
+      fielderName
+    ));
+  }
+
+  /**
+   * Creates a fielding change record with the given information
+   */
+  private createFieldingChangeRecord(
+    newFielderId: string,
+    oldFielderId: string,
+    position: number,
+    teamId: string,
+    newFielderName: string
+  ): LineupChangeData {
+    return {
+      changeType: 'POSITION_CHANGE',
+      playerInId: newFielderId,
+      playerOutId: oldFielderId,
+      positionFrom: `${position}`,
+      positionTo: `${position}`,
+      teamId: teamId,
+      description: `Fielding change: ${newFielderName} replaces ${oldFielderId} at position ${position}`
+    };
+  }
+
+  /**
+   * Applies all detected changes to the player lineup data
+   * Returns a new array of player data with the changes applied
+   */
   private applyChangesToPlayers(): LineupPlayerData[] {
     if (!this.latestState) return [];
     
     const newPlayers = [...this.latestState.players];
     
     this.changes.forEach(change => {
-      if (change.changeType === 'PITCHING_CHANGE') {
-        const pitcherIndex = newPlayers.findIndex(p => 
-          p.teamId === change.teamId && p.isCurrentPitcher);
-        
-        if (pitcherIndex >= 0) {
-          newPlayers[pitcherIndex] = {
-            ...newPlayers[pitcherIndex],
-            playerId: change.playerInId || '',
-            isCurrentPitcher: true
-          };
-        }
-      } else if (change.changeType === 'SUBSTITUTION') {
-        const batterIndex = newPlayers.findIndex(p => 
-          p.teamId === change.teamId && 
-          p.battingOrder === change.battingOrderFrom);
-        
-        if (batterIndex >= 0) {
-          // Get the current batter for the other team
-          const otherTeamId = this.nextPlay.batteam === change.teamId ? this.nextPlay.pitteam : this.nextPlay.batteam;
-          const otherTeamCurrentBatter = newPlayers.find(p => p.teamId === otherTeamId && p.isCurrentBatter);
-          
-          newPlayers[batterIndex] = {
-            ...newPlayers[batterIndex],
-            playerId: change.playerInId || '',
-            isCurrentBatter: true
-          };
-          
-          // Clear current batter flag for other players on this team only
-          // This preserves the current batter for the other team
-          newPlayers.forEach((p, i) => {
-            if (i !== batterIndex && p.teamId === change.teamId) {
-              newPlayers[i] = { ...p, isCurrentBatter: false };
-            }
-          });
-        }
-      } else if (change.changeType === 'POSITION_CHANGE') {
-        const fielderIndex = newPlayers.findIndex(p => 
-          p.teamId === change.teamId && 
-          p.position === change.positionFrom);
-        
-        if (fielderIndex >= 0) {
-          newPlayers[fielderIndex] = {
-            ...newPlayers[fielderIndex],
-            playerId: change.playerInId || ''
-          };
-        }
+      switch (change.changeType) {
+        case 'PITCHING_CHANGE':
+          this.applyPitchingChange(newPlayers, change);
+          break;
+        case 'SUBSTITUTION':
+          this.applyBatterSubstitution(newPlayers, change);
+          break;
+        case 'POSITION_CHANGE':
+          this.applyFieldingChange(newPlayers, change);
+          break;
       }
     });
     
     return newPlayers;
+  }
+
+  /**
+   * Applies a pitching change to the player lineup data
+   */
+  private applyPitchingChange(players: LineupPlayerData[], change: LineupChangeData): void {
+    const pitcherIndex = players.findIndex(p =>
+      p.teamId === change.teamId && p.isCurrentPitcher);
+    
+    if (pitcherIndex >= 0) {
+      players[pitcherIndex] = {
+        ...players[pitcherIndex],
+        playerId: change.playerInId || '',
+        isCurrentPitcher: true
+      };
+    }
+  }
+
+  /**
+   * Applies a batter substitution to the player lineup data
+   */
+  private applyBatterSubstitution(players: LineupPlayerData[], change: LineupChangeData): void {
+    const batterIndex = players.findIndex(p =>
+      p.teamId === change.teamId &&
+      p.battingOrder === change.battingOrderFrom);
+    
+    if (batterIndex >= 0) {
+      // Get the current batter for the other team
+      const otherTeamId = this.nextPlay.batteam === change.teamId ? this.nextPlay.pitteam : this.nextPlay.batteam;
+      const otherTeamCurrentBatter = players.find(p => p.teamId === otherTeamId && p.isCurrentBatter);
+      
+      players[batterIndex] = {
+        ...players[batterIndex],
+        playerId: change.playerInId || '',
+        isCurrentBatter: true
+      };
+      
+      // Clear current batter flag for other players on this team only
+      // This preserves the current batter for the other team
+      this.clearCurrentBatterFlagForTeam(players, change.teamId, batterIndex);
+    }
+  }
+
+  /**
+   * Clears the current batter flag for all players on a team except the specified player
+   */
+  private clearCurrentBatterFlagForTeam(players: LineupPlayerData[], teamId: string, exceptIndex: number): void {
+    players.forEach((p, i) => {
+      if (i !== exceptIndex && p.teamId === teamId) {
+        players[i] = { ...p, isCurrentBatter: false };
+      }
+    });
+  }
+
+  /**
+   * Applies a fielding change to the player lineup data
+   */
+  private applyFieldingChange(players: LineupPlayerData[], change: LineupChangeData): void {
+    const fielderIndex = players.findIndex(p =>
+      p.teamId === change.teamId &&
+      p.position === change.positionFrom);
+    
+    if (fielderIndex >= 0) {
+      players[fielderIndex] = {
+        ...players[fielderIndex],
+        playerId: change.playerInId || ''
+      };
+    }
   }
 
   private async updateCurrentBatterAndPitcher(): Promise<LineupPlayerData[]> {
@@ -446,6 +615,11 @@ export class LineupChangeDetector {
    * Validates that there is exactly one current batter per team
    * If not, it fixes the issue by selecting the first player in the batting order
    */
+  /**
+   * Validates that there is exactly one current batter per team
+   * If not, it fixes the issue by selecting the first player in the batting order
+   * or keeping only the one with the lowest batting order
+   */
   private validateCurrentBatters(players: LineupPlayerData[]): void {
     const teams = [...new Set(players.map(p => p.teamId))];
     
@@ -454,32 +628,57 @@ export class LineupChangeDetector {
       const currentBatters = teamPlayers.filter(p => p.isCurrentBatter);
       
       if (currentBatters.length === 0) {
-        // If no current batter, set the first player in the batting order as current batter
-        const sortedPlayers = [...teamPlayers].sort((a, b) => a.battingOrder - b.battingOrder);
-        if (sortedPlayers.length > 0) {
-          const firstPlayerIndex = players.findIndex(p => p.playerId === sortedPlayers[0].playerId);
-          if (firstPlayerIndex !== -1) {
-            players[firstPlayerIndex] = {
-              ...players[firstPlayerIndex],
-              isCurrentBatter: true
-            };
-            console.log(`[LINEUP] No current batter for team ${teamId}, setting player ${sortedPlayers[0].playerId} as current batter`);
-          }
-        }
+        this.handleMissingCurrentBatter(players, teamPlayers, teamId);
       } else if (currentBatters.length > 1) {
-        // If multiple current batters, keep only the one with the lowest batting order
-        const sortedCurrentBatters = [...currentBatters].sort((a, b) => a.battingOrder - b.battingOrder);
-        
-        for (let i = 1; i < sortedCurrentBatters.length; i++) {
-          const playerIndex = players.findIndex(p => p.playerId === sortedCurrentBatters[i].playerId);
-          if (playerIndex !== -1) {
-            players[playerIndex] = {
-              ...players[playerIndex],
-              isCurrentBatter: false
-            };
-            console.log(`[LINEUP] Multiple current batters for team ${teamId}, removing current batter flag from ${sortedCurrentBatters[i].playerId}`);
-          }
-        }
+        this.handleMultipleCurrentBatters(players, currentBatters, teamId);
+      }
+    }
+  }
+
+  /**
+   * Handles the case where a team has no current batter
+   * Sets the first player in the batting order as the current batter
+   */
+  private handleMissingCurrentBatter(
+    allPlayers: LineupPlayerData[],
+    teamPlayers: LineupPlayerData[],
+    teamId: string
+  ): void {
+    // If no current batter, set the first player in the batting order as current batter
+    const sortedPlayers = [...teamPlayers].sort((a, b) => a.battingOrder - b.battingOrder);
+    if (sortedPlayers.length > 0) {
+      const firstPlayerIndex = allPlayers.findIndex(p => p.playerId === sortedPlayers[0].playerId);
+      if (firstPlayerIndex !== -1) {
+        allPlayers[firstPlayerIndex] = {
+          ...allPlayers[firstPlayerIndex],
+          isCurrentBatter: true
+        };
+        console.log(`[LINEUP] No current batter for team ${teamId}, setting player ${sortedPlayers[0].playerId} as current batter`);
+      }
+    }
+  }
+
+  /**
+   * Handles the case where a team has multiple current batters
+   * Keeps only the one with the lowest batting order
+   */
+  private handleMultipleCurrentBatters(
+    allPlayers: LineupPlayerData[],
+    currentBatters: LineupPlayerData[],
+    teamId: string
+  ): void {
+    // If multiple current batters, keep only the one with the lowest batting order
+    const sortedCurrentBatters = [...currentBatters].sort((a, b) => a.battingOrder - b.battingOrder);
+    
+    // Keep the first one (lowest batting order) and remove the flag from others
+    for (let i = 1; i < sortedCurrentBatters.length; i++) {
+      const playerIndex = allPlayers.findIndex(p => p.playerId === sortedCurrentBatters[i].playerId);
+      if (playerIndex !== -1) {
+        allPlayers[playerIndex] = {
+          ...allPlayers[playerIndex],
+          isCurrentBatter: false
+        };
+        console.log(`[LINEUP] Multiple current batters for team ${teamId}, removing current batter flag from ${sortedCurrentBatters[i].playerId}`);
       }
     }
   }

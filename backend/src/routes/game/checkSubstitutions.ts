@@ -5,7 +5,51 @@ import { SubstitutionDetector } from '../../services/game/SubstitutionDetector';
 
 /**
  * Check for substitutions between the current play and the next play
- * @returns {SubstitutionResponse} Response data contains substitution information
+ *
+ * This endpoint detects and reports player substitutions that occurred between
+ * the current play and the next play in a baseball game. It identifies different
+ * types of substitutions including pitching changes, pinch hitters, pinch runners,
+ * and fielding changes.
+ *
+ * The endpoint requires a game ID, session ID, and the current play index to
+ * determine which plays to compare for substitution detection.
+ *
+ * @route GET /api/game/checkSubstitutions/:gameId
+ * @param {string} gameId - The ID of the game (path parameter)
+ * @param {string} currentPlay - The index of the current play (query parameter)
+ * @param {string} session-id - The session identifier (header)
+ * @returns {SubstitutionResponse} Response data contains detailed substitution information
+ *
+ * @example
+ * // Request
+ * GET /api/game/checkSubstitutions/CIN201904150?currentPlay=42
+ * Headers:
+ *   session-id: 123e4567-e89b-12d3-a456-426614174000
+ *
+ * // Response
+ * {
+ *   "hasPitchingChange": true,
+ *   "hasPinchHitter": false,
+ *   "hasPinchRunner": false,
+ *   "substitutions": [
+ *     {
+ *       "type": "PITCHING_CHANGE",
+ *       "playerIn": {
+ *         "playerId": "smitj001",
+ *         "playerName": "Joe Smith",
+ *         "teamId": "CIN",
+ *         "position": "P"
+ *       },
+ *       "playerOut": {
+ *         "playerId": "joneb001",
+ *         "playerName": "Bob Jones",
+ *         "teamId": "CIN",
+ *         "position": "P"
+ *       },
+ *       "description": "Joe Smith replaces Bob Jones as pitcher"
+ *     }
+ *   ]
+ * }
  */
 export const checkSubstitutions: RequestHandler = async (req, res) => {
   const gameId = req.params.gameId;

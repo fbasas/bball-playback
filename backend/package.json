@@ -7,7 +7,11 @@
   "type": "commonjs",
   "main": "src/bball-playback.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest --testMatch='**/__tests__/**/*.test.ts'",
+    "test:integration": "jest --testMatch='**/__tests__/**/*.integration.test.ts'",
     "build": "tsc",
     "start": "node dist/bball-playback.ts",
     "dev": "nodemon src/bball-playback.ts",
@@ -15,17 +19,24 @@
     "test:lineup": "ts-node src/scripts/testLineupTracking.ts",
     "debug:lineup": "node --inspect-brk=9230 -r ts-node/register src/scripts/testLineupTracking.ts",
     "example:play-by-play": "ts-node src/scripts/examplePlayByPlay.ts",
-    "interactive-playback": "ts-node src/scripts/interactivePlayback.ts"
+    "interactive-playback": "ts-node src/scripts/interactivePlayback.ts",
+    "test:repositories": "ts-node src/scripts/testRepositories.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/handlebars": "^4.0.40",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.4",
+    "@types/supertest": "^6.0.3",
     "@types/uuid": "^10.0.0",
     "axios": "^1.8.3",
+    "cypress": "^14.3.2",
     "dotenv-cli": "^8.0.0",
     "express": "^4.21.2",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
@@ -39,6 +50,7 @@
     "mysql2": "^3.13.0",
     "openai": "^4.87.3",
     "pg": "^8.13.3",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.24.3"
   }
 }

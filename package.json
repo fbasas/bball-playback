@@ -1,12 +1,27 @@
 {
+  "name": "bball-playback",
+  "version": "1.0.0",
+  "description": "Baseball playback application with AI-generated commentary",
+  "scripts": {
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && jest",
+    "test:frontend": "cd frontend && npm test",
+    "test:e2e": "cypress run",
+    "test:e2e:open": "cypress open",
+    "test:coverage": "cd backend && jest --coverage"
+  },
   "devDependencies": {
     "@types/inquirer": "^9.0.7",
     "@types/node": "^22.13.9",
-    "@types/yargs": "^17.0.33"
+    "@types/yargs": "^17.0.33",
+    "cypress": "^13.6.4"
   },
   "dependencies": {
+    "express-winston": "^4.2.0",
+    "http-status-codes": "^2.3.0",
     "inquirer": "^8.2.4",
     "mysql2": "^3.13.0",
+    "winston": "^3.17.0",
     "yargs": "^17.7.2"
   }
 }

@@ -14,33 +14,47 @@ import { PlayerService } from '../../services/game/player/PlayerService';
 import { CommentaryService, AnnouncerStyle } from '../../services/game/commentary/CommentaryService';
 import { BaseballStateService } from '../../services/game/state/BaseballStateService';
 import { LineupService } from '../../services/game/lineup/LineupService';
-import { 
-    validateRequestInput, 
-    getErrorStatusCode, 
-    createSimplifiedState, 
+import {
+    validateRequestInput,
+    createSimplifiedState,
     updateNextBatterAndPitcher,
     isHomeTeam
 } from '../../utils/GameUtils';
-import { 
-    EXPECTED_EVENT_MAP, 
-    DEFAULT_ANNOUNCER_STYLE 
+import {
+    EXPECTED_EVENT_MAP,
+    DEFAULT_ANNOUNCER_STYLE
 } from '../../constants/GameConstants';
-import { 
-    ResourceNotFoundError, 
-    DatabaseError, 
-    EventTranslationError 
-} from '../../types/errors/GameErrors';
+import {
+    NotFoundError,
+    DatabaseError,
+    EventTranslationError,
+    ValidationError
+} from '../../core/errors';
+import { logger, contextLogger } from '../../core/logging';
 
 /**
  * Get the next play in a game sequence
  * @returns {SimplifiedBaseballState} Response data contains a SimplifiedBaseballState object with the next play information
  */
-export const getNextPlay: RequestHandler = async (req, res) => {
+export const getNextPlay: RequestHandler = async (req, res, next) => {
+    // Create a context-specific logger for this route
+    const routeLogger = contextLogger({
+        route: 'getNextPlay',
+        gameId: req.params.gameId,
+        sessionId: req.headers['session-id'] as string
+    });
+
     const gameId = req.params.gameId;
     const sessionId = req.headers['session-id'] as string;
     const currentPlay = parseInt(req.query.currentPlay as string);
     const skipLLM = req.query.skipLLM === 'true';
     const announcerStyle = (req.query.announcerStyle as AnnouncerStyle) || DEFAULT_ANNOUNCER_STYLE;
+    
+    routeLogger.info('Processing next play request', {
+        currentPlay,
+        skipLLM,
+        announcerStyle
+    });
 
     try {
         // Basic validation
@@ -64,7 +78,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             const simplifiedState = createSimplifiedState(gameState, firstPlay);
             
             // Debug log the game state
-            console.log('[NEXTPLAY-INIT] GameState team info:', JSON.stringify({
+            routeLogger.debug('GameState team info (initialization)', {
                 home: {
                     displayName: gameState.home.displayName,
                     shortName: gameState.home.shortName
@@ -73,14 +87,14 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     displayName: gameState.visitors.displayName,
                     shortName: gameState.visitors.shortName
                 }
-            }, null, 2));
+            });
             
             // Initialize runs
             simplifiedState.home.runs = 0;
             simplifiedState.visitors.runs = 0;
             
             // Debug log the simplified state
-            console.log('[NEXTPLAY-INIT] SimplifiedBaseballState team info:', JSON.stringify({
+            routeLogger.debug('SimplifiedBaseballState team info (initialization)', {
                 home: {
                     displayName: simplifiedState.home.displayName,
                     shortName: simplifiedState.home.shortName,
@@ -91,7 +105,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                     shortName: simplifiedState.visitors.shortName,
                     runs: simplifiedState.visitors.runs
                 }
-            }, null, 2));
+            });
             
             // Set next batter and pitcher
             simplifiedState.home.nextBatter = gameState.home.currentBatter || null;
@@ -133,8 +147,8 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             nextPlayData
         );
         
-        // Calculate scores
-        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScore(
+        // Calculate scores using the optimized method
+        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScoreOptimized(
             gameId,
             currentPlay,
             currentPlayData,
@@ -190,7 +204,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
         const simplifiedState = createSimplifiedState(currentState, nextPlayData, playDescription);
         
         // Debug log the simplified state
-        console.log('[NEXTPLAY] SimplifiedBaseballState team info:', JSON.stringify({
+        routeLogger.debug('SimplifiedBaseballState team info', {
             home: {
                 displayName: simplifiedState.home.displayName,
                 shortName: simplifiedState.home.shortName,
@@ -201,7 +215,7 @@ export const getNextPlay: RequestHandler = async (req, res) => {
                 shortName: simplifiedState.visitors.shortName,
                 runs: simplifiedState.visitors.runs
             }
-        }, null, 2));
+        });
         
         // Set log entries
         simplifiedState.game.log = logEntries;
@@ -221,15 +235,18 @@ export const getNextPlay: RequestHandler = async (req, res) => {
             await LineupService.updateLineupInfo(gameId, sessionId, nextPlayData, simplifiedState);
         } catch (error) {
             // Log the error but don't throw it to avoid breaking the main flow
-            console.error('Error processing lineup changes:', error);
+            routeLogger.warn('Error processing lineup changes', { error });
         }
+        
+        routeLogger.info('Successfully processed next play', {
+            currentPlay: simplifiedState.currentPlay,
+            inning: simplifiedState.game.inning,
+            isTopInning: simplifiedState.game.isTopInning
+        });
         
         res.json(simplifiedState);
     } catch (error: unknown) {
-        const status = getErrorStatusCode(error);
-        const message = error instanceof Error ? error.message : 'An unknown error occurred';
-        
-        console.error(`Error in getNextPlay: ${message}`, error);
-        res.status(status).json({ error: message });
+        // Pass the error to the error handling middleware
+        next(error);
     }
 };

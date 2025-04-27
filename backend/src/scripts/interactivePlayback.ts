@@ -127,10 +127,26 @@ async function initializeGame(gameId: string): Promise<SimplifiedBaseballState> 
 async function createGameSession(gameId: string): Promise<string> {
   try {
     console.log('\nCreating game session...');
-    // Use hardcoded team IDs for testing purposes
-    // In a real implementation, we would determine these from the game data
-    const homeTeamId = 'NYA'; // New York Yankees
-    const visitingTeamId = 'LAD'; // Los Angeles Dodgers
+    
+    // Get team IDs from the game data instead of using hardcoded values
+    console.log(`Fetching team information for game ${gameId}...`);
+    let homeTeamId, visitingTeamId;
+    
+    try {
+      // Query the game info to get the actual team IDs
+      const gameInfoResponse = await axios.get(`${API_BASE_URL}/game/info/${gameId}`);
+      const gameInfo = gameInfoResponse.data;
+      
+      homeTeamId = gameInfo.homeTeam.id;
+      visitingTeamId = gameInfo.visitingTeam.id;
+      
+      console.log(`Found teams: Home=${homeTeamId}, Visiting=${visitingTeamId}`);
+    } catch (error) {
+      console.warn('Could not fetch team information, using default values');
+      // Fallback to extracting team ID from game ID (first 3 characters are usually the home team)
+      homeTeamId = gameId.substring(0, 3);
+      visitingTeamId = 'VIS'; // Generic visiting team ID as fallback
+    }
     
     const createGameResponse = await axios.post(`${API_BASE_URL}/game/createGame`, {
       homeTeamId,

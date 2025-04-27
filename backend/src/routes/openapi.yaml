@@ -10,7 +10,7 @@ paths:
   /game/createGame:
     post:
       summary: Create a new game
-      description: Creates a new game with the specified home and visiting teams
+      description: Creates a new game with the specified home and visiting teams and initializes the game state
       requestBody:
         required: true
         content:
@@ -24,9 +24,14 @@ paths:
                 homeTeamId:
                   type: string
                   description: ID of the home team
+                  example: "CIN"
                 visitingTeamId:
                   type: string
                   description: ID of the visiting team
+                  example: "CHN"
+            example:
+              homeTeamId: "CIN"
+              visitingTeamId: "CHN"
       responses:
         '200':
           description: Game created successfully
@@ -59,7 +64,7 @@ paths:
   /game/init/{gameId}:
     get:
       summary: Initialize a game
-      description: Initializes a game with the first play data
+      description: Initializes a game with the first play data and returns the initial game state
       parameters:
         - name: gameId
           in: path
@@ -109,7 +114,7 @@ paths:
   /game/announceLineups/{gameId}:
     get:
       summary: Announce lineups
-      description: Generates lineup announcements for a game
+      description: Generates AI-powered lineup announcements for a game with detailed player introductions
       parameters:
         - name: gameId
           in: path
@@ -159,7 +164,7 @@ paths:
   /game/next/{gameId}:
     get:
       summary: Get next play
-      description: Gets the next play in a game sequence
+      description: Gets the next play in a game sequence with AI-generated play-by-play commentary
       parameters:
         - name: gameId
           in: path
@@ -216,7 +221,7 @@ paths:
   /game/info/{gid}:
     get:
       summary: Get game info
-      description: Gets information about a game, including all plays
+      description: Gets detailed information about a game, including all plays and events
       parameters:
         - name: gid
           in: path
@@ -258,7 +263,7 @@ paths:
   /game/lineup/history/{gameId}:
     get:
       summary: Get lineup history
-      description: Gets all lineup changes for a game
+      description: Gets all lineup changes for a game, including substitutions, position changes, and batting order changes
       parameters:
         - name: gameId
           in: path
@@ -300,7 +305,7 @@ paths:
   /game/lineup/state/{gameId}/{playIndex}:
     get:
       summary: Get lineup state for play
-      description: Gets the lineup state for a specific play in a game
+      description: Gets the complete lineup state for a specific play in a game, including all players, positions, and batting orders
       parameters:
         - name: gameId
           in: path
@@ -350,7 +355,7 @@ paths:
   /game/lineup/latest/{gameId}:
     get:
       summary: Get latest lineup state
-      description: Gets the latest lineup state for a game
+      description: Gets the most recent lineup state for a game, reflecting all substitutions and changes
       parameters:
         - name: gameId
           in: path
@@ -379,6 +384,78 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Lineup state not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /game/checkSubstitutions/{gameId}:
+    get:
+      summary: Check substitutions
+      description: Checks for substitutions between the current play and the next play
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+        - name: currentPlay
+          in: query
+          required: true
+          description: Index of the current play
+          schema:
+            type: integer
+            format: int32
+        - name: session-id
+          in: header
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Substitution information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstitutionResponse'
+              example:
+                hasPitchingChange: true
+                hasPinchHitter: false
+                hasPinchRunner: false
+                substitutions: [
+                  {
+                    type: "PITCHING_CHANGE",
+                    playerIn: {
+                      playerId: "smitj001",
+                      playerName: "Joe Smith",
+                      teamId: "CIN",
+                      position: "P"
+                    },
+                    playerOut: {
+                      playerId: "joneb001",
+                      playerName: "Bob Jones",
+                      teamId: "CIN",
+                      position: "P"
+                    },
+                    description: "Joe Smith replaces Bob Jones as pitcher"
+                  }
+                ]
+        '400':
+          description: Bad request - missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Play data not found
           content:
             application/json:
               schema:
@@ -622,3 +699,53 @@ components:
           type: string
           nullable: true
           description: Runner on third base (if any)
+          
+    SubstitutionResponse:
+      type: object
+      properties:
+        hasPitchingChange:
+          type: boolean
+          description: Whether there was a pitching change
+        hasPinchHitter:
+          type: boolean
+          description: Whether there was a pinch hitter
+        hasPinchRunner:
+          type: boolean
+          description: Whether there was a pinch runner
+        substitutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Substitution'
+          description: List of substitutions
+          
+    Substitution:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['PITCHING_CHANGE', 'PINCH_HITTER', 'PINCH_RUNNER', 'FIELDING_CHANGE']
+          description: Type of substitution
+        playerIn:
+          $ref: '#/components/schemas/PlayerChange'
+        playerOut:
+          $ref: '#/components/schemas/PlayerChange'
+        description:
+          type: string
+          description: Human-readable description of the substitution
+          
+    PlayerChange:
+      type: object
+      properties:
+        playerId:
+          type: string
+          description: ID of the player
+        playerName:
+          type: string
+          description: Full name of the player
+        teamId:
+          type: string
+          description: ID of the team
+        position:
+          type: string
+          nullable: true
+          description: Position of the player (if applicable)

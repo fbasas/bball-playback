@@ -52,7 +52,7 @@ export default function Scoreboard({
             </span>
           ))}
         </div>
-        <div className="stats-container">
+        <div className="stats-container" data-testid="stats-container">
           {["R", "H", "E"].map((stat) => (
             <span key={stat} className="stat-label">
               {stat}
@@ -72,7 +72,7 @@ export default function Scoreboard({
               </span>
             ))}
           </div>
-          <div className="stats-container">
+          <div className="stats-container" data-testid="stats-container">
             <span className="score">{gameState.visitors.stats.runs}</span>
             <span className="score">{gameState.visitors.stats.hits}</span>
             <span className="score">{gameState.visitors.stats.errors}</span>
@@ -87,7 +87,7 @@ export default function Scoreboard({
               </span>
             ))}
           </div>
-          <div className="stats-container">
+          <div className="stats-container" data-testid="stats-container">
             <span className="score">{gameState.home.stats.runs}</span>
             <span className="score">{gameState.home.stats.hits}</span>
             <span className="score">{gameState.home.stats.errors}</span>

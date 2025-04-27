@@ -1,10 +1,19 @@
 # Baseball Playback Application
 
-A modern web application that simulates baseball games with AI-generated play-by-play commentary.
+A modern web application that simulates baseball games with AI-generated play-by-play commentary and detailed lineup tracking.
+
+![Baseball Playback Logo](https://via.placeholder.com/800x400?text=Baseball+Playback+Application)
 
 ## Project Overview
 
 The Baseball Playback application is designed to recreate baseball games with AI-generated commentary. It uses historical baseball data from the Retrosheet database to simulate games between different teams, with play-by-play narration generated using OpenAI's language models. The application features a responsive frontend that displays game information, team lineups, and a dynamic game log with typewriter-style text animation.
+
+Key features include:
+- AI-generated play-by-play commentary in multiple announcer styles
+- Detailed lineup tracking with substitution detection
+- Real-time scoreboard updates
+- Comprehensive validation system for data integrity
+- Optimized database queries with caching for improved performance
 
 ## Architecture Overview
 
@@ -89,6 +98,30 @@ The frontend configuration is managed in `frontend/src/config/config.ts` and sup
 ### Server Setup
 
 The backend is built with Express.js and TypeScript. The main entry point is `backend/src/bball-playback.ts`, which sets up the Express server with middleware and routes.
+
+### Error Handling and Logging
+
+The application implements a centralized error handling and logging system:
+
+#### Error Handling (`backend/src/core/errors/`)
+
+- **BaseError**: Base class for all application errors with additional properties like HTTP status code
+- **ApiError**: API-specific error classes (BadRequestError, NotFoundError, etc.)
+- **DomainError**: Domain-specific error classes (ValidationError, DatabaseError, etc.)
+- **ErrorMiddleware**: Express middleware for consistent error handling
+- **ErrorHandler**: Central utility for handling and processing errors
+
+#### Logging (`backend/src/core/logging/`)
+
+- **Logger**: Winston-based logger with different log levels (error, warn, info, http, debug)
+- **HttpLogger**: Middleware for logging HTTP requests and responses
+- **ContextLogger**: Utility for adding context to logs for better debugging
+
+The system provides:
+- Consistent error responses across the API
+- Structured logging with different severity levels
+- Context-rich logs for better debugging
+- Process-level error handling for uncaught exceptions
 
 ### API Routes
 
@@ -350,12 +383,156 @@ cd backend
 npx knex migrate:latest
 ```
 
+## API Documentation
+
+The application provides a comprehensive REST API for interacting with the baseball playback system. For detailed API documentation, see [API Documentation](backend/src/routes/API.md).
+
+## Validation System
+
+The application implements a comprehensive validation system using Zod to ensure type safety and data integrity:
+
+- **Schema-based Validation**: All data structures are defined using Zod schemas
+- **Request Validation**: API requests are validated using middleware
+- **Response Validation**: API responses are validated before being sent to clients
+- **External Data Validation**: Data from external sources is validated before processing
+
+For more information, see [Validation System Documentation](backend/src/validation/README.md).
+
+## Lineup Tracking System
+
+The application includes a sophisticated lineup tracking system that:
+
+- Tracks player positions and batting orders throughout the game
+- Detects substitutions, position changes, and batting order changes
+- Provides historical lineup data for any point in the game
+- Supports pinch hitters, pinch runners, and pitching changes
+
 ## Future Enhancements
 
 Potential areas for future development:
 
 1. Adding user authentication and game saving
-2. Implementing more detailed statistics
-3. Adding visual representation of the baseball field
-4. Supporting historical games with real player data
-5. Adding support for different commentary styles
+2. Implementing more detailed statistics and advanced metrics
+3. Adding visual representation of the baseball field with animated play visualization
+4. Supporting historical games with real player data and statistics
+5. Adding support for different commentary styles and languages
+6. Expanding the error handling system with error monitoring integration (e.g., Sentry)
+7. Enhancing the logging system with log aggregation and visualization tools
+8. Implementing a machine learning model for predicting play outcomes
+
+## Recent Improvements
+
+Recent improvements to the application:
+
+1. **Centralized Error Handling System**: Implemented a comprehensive error handling system with custom error classes and middleware for consistent error responses across the API.
+2. **Structured Logging System**: Added a structured logging system with different log levels and contexts for better debugging and monitoring.
+3. **Repository Pattern Implementation**: Implemented a repository pattern to encapsulate database access, making it easier to optimize queries and improve testability.
+4. **Optimized Database Queries**: Improved database query performance, especially in the ScoreService, by implementing more efficient queries and caching.
+5. **Caching Mechanism**: Added a comprehensive caching system for frequently accessed data like player information, reducing database load and improving response times.
+6. **Validation System**: Implemented a comprehensive validation system using Zod for type safety and data integrity.
+7. **Lineup Tracking System**: Added a sophisticated lineup tracking system that tracks player positions and batting orders throughout the game.
+8. **Substitution Detection**: Implemented automatic detection of player substitutions, position changes, and batting order changes.
+9. **Multiple Announcer Styles**: Added support for different announcer styles (classic, modern, enthusiastic, poetic) for play-by-play commentary.
+10. **Performance Optimization**: Added database indexes and query optimizations for improved performance, especially for lineup tracking and play retrieval.
+
+### Repository Pattern
+
+The application now uses the repository pattern to abstract database access:
+
+```mermaid
+graph TD
+    Services[Services] --> Repositories[Repositories]
+    Repositories --> DB[(Database)]
+    Repositories --> Cache[Cache]
+```
+
+- **Base Repository Interface**: Defines standard CRUD operations for all repositories
+- **KnexRepository**: Base implementation using Knex.js
+- **CachedRepository**: Extends KnexRepository with caching capabilities
+- **Concrete Repositories**:
+  - PlayerRepository: Handles player data access
+  - PlayRepository: Handles play data access
+  - ScoreRepository: Handles score calculations
+  - GameRepository: Handles game and team data
+
+### Caching System
+
+The application includes a flexible caching system:
+
+- **CacheManager**: Generic cache implementation with configurable TTL and max size
+- **Entity-specific Caches**: Separate caches for different entity types (players, teams, plays, scores)
+- **Cache Invalidation**: Automatic cache invalidation when data is updated
+- **Get or Compute Pattern**: Convenient API for getting cached values or computing them if not found
+
+## Documentation
+
+For more details, see:
+- [API Documentation](backend/src/routes/API.md)
+- [Repository Pattern Documentation](backend/src/database/repositories/README.md)
+- [Caching System Documentation](backend/src/core/caching/README.md)
+- [Validation System Documentation](backend/src/validation/README.md)
+- [Core System Documentation](backend/src/core/README.md)
+- [Event Translation Documentation](backend/src/services/eventTranslation/README.md)
+
+## Architecture Diagrams
+
+### System Architecture
+
+```mermaid
+graph TD
+    Client[Client Browser] --> Frontend[React Frontend]
+    Frontend --> API[Express API]
+    API --> Services[Service Layer]
+    Services --> Repositories[Repository Layer]
+    Repositories --> DB[(MySQL Database)]
+    Services --> OpenAI[OpenAI API]
+    Services --> Cache[Cache Layer]
+    Cache --> Memory[In-Memory Cache]
+    
+    subgraph Core Systems
+        Validation[Validation System]
+        ErrorHandling[Error Handling]
+        Logging[Logging System]
+        Performance[Performance Monitoring]
+    end
+    
+    API --> Core Systems
+    Services --> Core Systems
+```
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Frontend
+    participant API
+    participant Services
+    participant OpenAI
+    participant DB
+    
+    Client->>Frontend: Request game playback
+    Frontend->>API: Initialize game
+    API->>Services: Create game state
+    Services->>DB: Fetch game data
+    DB-->>Services: Return game data
+    Services->>OpenAI: Generate commentary
+    OpenAI-->>Services: Return commentary
+    Services-->>API: Return game state
+    API-->>Frontend: Return game state
+    Frontend-->>Client: Display game
+    
+    loop Next Play
+        Client->>Frontend: Request next play
+        Frontend->>API: Get next play
+        API->>Services: Process next play
+        Services->>DB: Fetch play data
+        DB-->>Services: Return play data
+        Services->>Services: Detect substitutions
+        Services->>OpenAI: Generate play-by-play
+        OpenAI-->>Services: Return commentary
+        Services-->>API: Return updated state
+        API-->>Frontend: Return updated state
+        Frontend-->>Client: Display play
+    end
+```

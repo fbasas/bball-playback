@@ -1,21 +1,30 @@
-import { db } from '../../../config/database';
 import { PlayData } from '../../../../../common/types/PlayData';
-import { DatabaseError } from '../../../types/errors/GameErrors';
+import { scoreRepository, ScoreResult } from '../../../database/repositories/ScoreRepository';
+import { BaseService } from '../../BaseService';
+import { baseballMetricsCollector } from '../../../core/metrics';
+import { logger } from '../../../core/logging';
 
-/**
- * Interface for score calculation results
- */
-export interface ScoreResult {
-  homeScoreBeforePlay: number;
-  visitorScoreBeforePlay: number;
-  homeScoreAfterPlay: number;
-  visitorScoreAfterPlay: number;
-}
+// Re-export ScoreResult interface from the repository
+export { ScoreResult } from '../../../database/repositories/ScoreRepository';
 
 /**
  * Service for handling score calculations
  */
-export class ScoreService {
+export class ScoreService extends BaseService {
+  // Singleton instance for backward compatibility during transition
+  private static instance: ScoreService;
+
+  /**
+   * Gets the singleton instance
+   * @returns The singleton instance
+   */
+  public static getInstance(): ScoreService {
+    if (!ScoreService.instance) {
+      ScoreService.instance = new ScoreService();
+    }
+    return ScoreService.instance;
+  }
+
   /**
    * Calculates the cumulative score for home and visiting teams
    * @param gameId The game ID
@@ -24,59 +33,141 @@ export class ScoreService {
    * @param nextPlayData The next play data
    * @returns A ScoreResult object with scores before and after the play
    */
-  public static async calculateScore(
-    gameId: string, 
-    currentPlay: number, 
-    currentPlayData: PlayData, 
+  /**
+   * Calculates the cumulative score for home and visiting teams
+   * This method uses the optimized version for better performance
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns A ScoreResult object with scores before and after the play
+   */
+  public async calculateScore(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
     nextPlayData: PlayData
   ): Promise<ScoreResult> {
+    const startTime = performance.now();
+    
     try {
-      // Fetch all plays up to but NOT including the current play to get score before current play
-      // This ensures we don't include the runs from the current play in the "before" score
-      const previousPlays = await db('plays')
-        .select('gid', 'pn', 'top_bot', 'batteam', 'runs')
-        .where({ gid: gameId })
-        .where('pn', '<', currentPlay)  // Using '<' instead of '<=' to exclude the current play
-        .orderBy('pn', 'asc');
-
-      let homeScoreBeforePlay = 0;
-      let visitorScoreBeforePlay = 0;
-      const homeTeamId = currentPlayData.top_bot === 0 ? currentPlayData.pitteam : currentPlayData.batteam;
-
-      previousPlays.forEach(play => {
-        const runsOnPlay = play.runs || 0;
-        if (runsOnPlay > 0) {
-          const isHomeBatting = play.batteam === homeTeamId;
-          if (isHomeBatting) {
-            homeScoreBeforePlay += runsOnPlay;
-          } else {
-            visitorScoreBeforePlay += runsOnPlay;
-          }
+      // Use the optimized version by default for better performance
+      const result = await this.calculateScoreOptimized(gameId, currentPlay, currentPlayData, nextPlayData);
+      
+      const endTime = performance.now();
+      const durationMs = endTime - startTime;
+      
+      // Track score changes in metrics
+      if (result) {
+        // Check if home team score changed
+        const homeScoreChange = result.homeScoreAfterPlay - result.homeScoreBeforePlay;
+        if (homeScoreChange > 0) {
+          baseballMetricsCollector.recordScoreChange(
+            gameId,
+            'home',
+            homeScoreChange,
+            { playIndex: currentPlay }
+          );
+          
+          logger.debug(`Home team scored ${homeScoreChange} run(s) in game ${gameId}`, {
+            gameId,
+            playIndex: currentPlay,
+            homeScoreBefore: result.homeScoreBeforePlay,
+            homeScoreAfter: result.homeScoreAfterPlay
+          });
         }
-      });
-
-      // Calculate score after the next play
-      let homeScoreAfterPlay = homeScoreBeforePlay;
-      let visitorScoreAfterPlay = visitorScoreBeforePlay;
-      const runsOnNextPlay = nextPlayData.runs || 0;
-
-      if (runsOnNextPlay > 0) {
-        const isHomeBattingNext = nextPlayData.batteam === homeTeamId;
-        if (isHomeBattingNext) {
-          homeScoreAfterPlay += runsOnNextPlay;
-        } else {
-          visitorScoreAfterPlay += runsOnNextPlay;
+        
+        // Check if visitor team score changed
+        const visitorScoreChange = result.visitorScoreAfterPlay - result.visitorScoreBeforePlay;
+        if (visitorScoreChange > 0) {
+          baseballMetricsCollector.recordScoreChange(
+            gameId,
+            'visitors',
+            visitorScoreChange,
+            { playIndex: currentPlay }
+          );
+          
+          logger.debug(`Visitor team scored ${visitorScoreChange} run(s) in game ${gameId}`, {
+            gameId,
+            playIndex: currentPlay,
+            visitorScoreBefore: result.visitorScoreBeforePlay,
+            visitorScoreAfter: result.visitorScoreAfterPlay
+          });
         }
+        
+        // Record the score calculation performance
+        baseballMetricsCollector.recordDatabaseQuery(
+          'score_calculation',
+          'plays',
+          durationMs,
+          1
+        );
       }
-
-      return {
-        homeScoreBeforePlay,
-        visitorScoreBeforePlay,
-        homeScoreAfterPlay,
-        visitorScoreAfterPlay
-      };
+      
+      return result;
     } catch (error) {
-      throw new DatabaseError(`Error calculating score for game ${gameId}, play ${currentPlay}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.error('Error calculating score', {
+        gameId,
+        currentPlay,
+        error
+      });
+      
+      // Return default scores in case of error
+      return {
+        homeScoreBeforePlay: 0,
+        homeScoreAfterPlay: 0,
+        visitorScoreBeforePlay: 0,
+        visitorScoreAfterPlay: 0
+      };
+    }
+  }
+
+  /**
+   * Legacy version of calculateScore that uses a less efficient query
+   * Kept for backward compatibility
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns A ScoreResult object with scores before and after the play
+   */
+  public async calculateScoreLegacy(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult> {
+    const startTime = performance.now();
+    
+    try {
+      const result = await scoreRepository.calculateScore(gameId, currentPlay, currentPlayData, nextPlayData);
+      
+      const endTime = performance.now();
+      const durationMs = endTime - startTime;
+      
+      // Record the legacy score calculation performance
+      baseballMetricsCollector.recordDatabaseQuery(
+        'score_calculation_legacy',
+        'plays',
+        durationMs,
+        1
+      );
+      
+      return result;
+    } catch (error) {
+      logger.error('Error calculating score (legacy)', {
+        gameId,
+        currentPlay,
+        error
+      });
+      
+      // Return default scores in case of error
+      return {
+        homeScoreBeforePlay: 0,
+        homeScoreAfterPlay: 0,
+        visitorScoreBeforePlay: 0,
+        visitorScoreAfterPlay: 0
+      };
     }
   }
 
@@ -85,23 +176,80 @@ export class ScoreService {
    * This method could be implemented in the future to improve performance
    * for games with many plays
    */
-  public static async calculateScoreOptimized(
-    gameId: string, 
-    currentPlay: number, 
-    currentPlayData: PlayData, 
+  /**
+   * Optimized version of calculateScore that uses a more efficient query
+   * This method improves performance for games with many plays
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns A ScoreResult object with scores before and after the play
+   */
+  public async calculateScoreOptimized(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
     nextPlayData: PlayData
   ): Promise<ScoreResult> {
+    const startTime = performance.now();
+    
     try {
-      // This is a placeholder for a future optimization
-      // Instead of fetching all previous plays, we could:
-      // 1. Cache score calculations
-      // 2. Use a more efficient query that sums runs directly in the database
-      // 3. Maintain a running score in the game state
-
-      // For now, we'll use the standard calculation
-      return this.calculateScore(gameId, currentPlay, currentPlayData, nextPlayData);
+      const result = await scoreRepository.calculateScoreOptimized(gameId, currentPlay, currentPlayData, nextPlayData);
+      
+      const endTime = performance.now();
+      const durationMs = endTime - startTime;
+      
+      // Record the optimized score calculation performance
+      baseballMetricsCollector.recordDatabaseQuery(
+        'score_calculation_optimized',
+        'plays',
+        durationMs,
+        1
+      );
+      
+      return result;
     } catch (error) {
-      throw new DatabaseError(`Error calculating optimized score for game ${gameId}, play ${currentPlay}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.error('Error calculating score (optimized)', {
+        gameId,
+        currentPlay,
+        error
+      });
+      
+      // Return default scores in case of error
+      return {
+        homeScoreBeforePlay: 0,
+        homeScoreAfterPlay: 0,
+        visitorScoreBeforePlay: 0,
+        visitorScoreAfterPlay: 0
+      };
     }
+  }
+
+  // Static methods for backward compatibility during transition
+  public static async calculateScore(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult> {
+    return ScoreService.getInstance().calculateScore(gameId, currentPlay, currentPlayData, nextPlayData);
+  }
+
+  public static async calculateScoreLegacy(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult> {
+    return ScoreService.getInstance().calculateScoreLegacy(gameId, currentPlay, currentPlayData, nextPlayData);
+  }
+
+  public static async calculateScoreOptimized(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult> {
+    return ScoreService.getInstance().calculateScoreOptimized(gameId, currentPlay, currentPlayData, nextPlayData);
   }
 }

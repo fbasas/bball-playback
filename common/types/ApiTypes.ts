@@ -22,7 +22,16 @@ export interface CreateGameResponse {
 /**
  * GameInfo endpoint types
  */
+export interface TeamInfo {
+    id: string;
+    displayName: string;
+    shortName: string;
+}
+
 export interface GameInfoResponse {
+    gameId: string;
+    homeTeam: TeamInfo;
+    visitingTeam: TeamInfo;
     plays: PlayData[];
 }
 
