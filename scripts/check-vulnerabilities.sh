@@ -24,6 +24,41 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Get GitHub Dependabot vulnerability count
+get_github_vulnerability_count() {
+    # Check if gh CLI is available
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "0"
+        return
+    fi
+
+    # Get repo name from git remote
+    local repo_url
+    repo_url=$(git config --get remote.origin.url 2>/dev/null || echo "")
+    if [ -z "$repo_url" ]; then
+        echo "0"
+        return
+    fi
+
+    # Extract owner/repo from URL
+    local owner_repo
+    owner_repo=$(echo "$repo_url" | sed -E 's/.*[:/]([^/]+\/[^/]+)(\.git)?$/\1/')
+
+    # Query GitHub API for Dependabot alerts
+    # Note: This requires 'security_events' scope or admin access
+    local alerts
+    alerts=$(gh api "repos/$owner_repo/dependabot/alerts?state=open" --jq 'length' 2>&1)
+
+    # Check if we got a number or an error
+    if [[ "$alerts" =~ ^[0-9]+$ ]]; then
+        echo "$alerts"
+    else
+        # API call failed (likely permissions), return 0
+        # The user can check https://github.com/<repo>/security/dependabot manually
+        echo "0"
+    fi
+}
+
 # Get current vulnerability counts
 get_vulnerability_counts() {
     local dir=$1
@@ -75,6 +110,7 @@ load_baseline() {
 save_baseline() {
     local root_count=$1
     local backend_count=$2
+    local github_count=${3:-0}
 
     mkdir -p "$(dirname "$BASELINE_FILE")"
 
@@ -82,6 +118,7 @@ save_baseline() {
 {
   "root": $root_count,
   "backend": $backend_count,
+  "github": $github_count,
   "timestamp": "$(date -Iseconds)",
   "root_details": $(get_vulnerability_details "$PROJECT_ROOT"),
   "backend_details": $(get_vulnerability_details "$PROJECT_ROOT/backend")
@@ -100,31 +137,42 @@ main() {
         echo "Updating vulnerability baseline..."
         local root_count=$(get_vulnerability_counts "$PROJECT_ROOT")
         local backend_count=$(get_vulnerability_counts "$PROJECT_ROOT/backend")
-        save_baseline "$root_count" "$backend_count"
+        local github_count=$(get_github_vulnerability_count)
+        save_baseline "$root_count" "$backend_count" "$github_count"
         exit 0
     fi
 
-    echo "Checking for new npm vulnerabilities..."
+    echo "Checking for new vulnerabilities..."
 
-    # Get current counts
+    # Get current npm audit counts
     local root_current=$(get_vulnerability_counts "$PROJECT_ROOT")
     local backend_current=$(get_vulnerability_counts "$PROJECT_ROOT/backend")
     local total_current=$((root_current + backend_current))
+
+    # Get GitHub Dependabot count
+    local github_current=$(get_github_vulnerability_count)
 
     # Load baseline
     local baseline=$(load_baseline)
     local root_baseline=$(echo "$baseline" | jq -r '.root // 0')
     local backend_baseline=$(echo "$baseline" | jq -r '.backend // 0')
+    local github_baseline=$(echo "$baseline" | jq -r '.github // 0')
     local total_baseline=$((root_baseline + backend_baseline))
 
-    echo "Current vulnerabilities: root=$root_current, backend=$backend_current (total: $total_current)"
-    echo "Baseline vulnerabilities: root=$root_baseline, backend=$backend_baseline (total: $total_baseline)"
+    echo "npm audit vulnerabilities: root=$root_current, backend=$backend_current (total: $total_current)"
+    echo "GitHub Dependabot alerts: $github_current"
+    echo "Baseline: npm=$total_baseline, github=$github_baseline"
 
-    # Check if there are NEW vulnerabilities
-    local new_count=$((total_current - total_baseline))
+    # Check if there are NEW vulnerabilities (from either npm or GitHub)
+    local new_npm_count=$((total_current - total_baseline))
+    local new_github_count=$((github_current - github_baseline))
+    local new_count=$((new_npm_count > 0 ? new_npm_count : 0))
+    new_count=$((new_count + (new_github_count > 0 ? new_github_count : 0)))
 
-    if [ "$new_count" -gt 0 ]; then
-        echo -e "${RED}WARNING: $new_count NEW vulnerability(s) detected!${NC}"
+    if [ "$new_npm_count" -gt 0 ] || [ "$new_github_count" -gt 0 ]; then
+        echo -e "${RED}WARNING: NEW vulnerability(s) detected!${NC}"
+        [ "$new_npm_count" -gt 0 ] && echo -e "${RED}  - $new_npm_count new npm audit vulnerabilities${NC}"
+        [ "$new_github_count" -gt 0 ] && echo -e "${RED}  - $new_github_count new GitHub Dependabot alerts${NC}"
 
         # Get detailed info for the task description
         local root_details=$(get_vulnerability_details "$PROJECT_ROOT")
@@ -134,33 +182,44 @@ main() {
         if command -v bd >/dev/null 2>&1; then
             echo "Creating beads task to track new vulnerabilities..."
 
+            # Determine task title based on source
+            local title_source=""
+            [ "$new_npm_count" -gt 0 ] && title_source="npm"
+            [ "$new_github_count" -gt 0 ] && { [ -n "$title_source" ] && title_source="$title_source + GitHub" || title_source="GitHub"; }
+
             # Create a task with details
             bd create \
-                --title="Fix $new_count new npm security vulnerabilities" \
+                --title="Fix new security vulnerabilities ($title_source)" \
                 --type=bug \
                 --priority=1 \
-                --description="Detected $new_count NEW npm vulnerabilities after push.
+                --description="Detected NEW vulnerabilities after push.
+
+## Summary
+- New npm audit vulnerabilities: $new_npm_count
+- New GitHub Dependabot alerts: $new_github_count
 
 ## Current State
-- Root package: $root_current vulnerabilities
-- Backend package: $backend_current vulnerabilities
-- Total: $total_current vulnerabilities
+- npm audit (root): $root_current vulnerabilities
+- npm audit (backend): $backend_current vulnerabilities
+- GitHub Dependabot: $github_current alerts
 
 ## Baseline (before)
-- Root package: $root_baseline vulnerabilities
-- Backend package: $backend_baseline vulnerabilities
-- Total: $total_baseline vulnerabilities
+- npm audit: $total_baseline vulnerabilities
+- GitHub Dependabot: $github_baseline alerts
 
 ## Action Required
-Run \`npm audit\` in root and backend directories to see details.
-Run \`npm audit fix\` to attempt automatic fixes.
+1. Run \`npm audit\` in root and backend directories to see npm details
+2. Run \`npm audit fix\` to attempt automatic fixes
+3. Visit https://github.com/fbasas/bball-playback/security/dependabot for GitHub alerts
 
-## Root Vulnerabilities
+## npm Audit Details
+
+### Root Package
 \`\`\`json
 $root_details
 \`\`\`
 
-## Backend Vulnerabilities
+### Backend Package
 \`\`\`json
 $backend_details
 \`\`\`"
@@ -171,11 +230,11 @@ $backend_details
         fi
 
         # Update baseline after creating task (so we don't create duplicate tasks)
-        save_baseline "$root_current" "$backend_current"
+        save_baseline "$root_current" "$backend_current" "$github_current"
 
         exit 1  # Non-zero to indicate new vulnerabilities found
-    elif [ "$total_current" -gt 0 ]; then
-        echo -e "${YELLOW}No new vulnerabilities (existing: $total_current)${NC}"
+    elif [ "$total_current" -gt 0 ] || [ "$github_current" -gt 0 ]; then
+        echo -e "${YELLOW}No new vulnerabilities (existing: npm=$total_current, github=$github_current)${NC}"
         exit 0
     else
         echo -e "${GREEN}No vulnerabilities detected${NC}"
