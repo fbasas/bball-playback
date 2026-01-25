@@ -458,22 +458,27 @@ export interface LineupStateData {
  * Lineup player data
  */
 export interface LineupPlayerData {
-  playerId: string;
   teamId: string;
+  playerId: string;
   battingOrder: number;
-  fieldingPosition: number;
+  position: string;
+  isCurrentBatter: boolean;
+  isCurrentPitcher: boolean;
 }
 
 /**
  * Lineup change data
  */
 export interface LineupChangeData {
-  playerIn: string;
-  playerOut: string;
+  changeType: 'SUBSTITUTION' | 'POSITION_CHANGE' | 'BATTING_ORDER_CHANGE' | 'PITCHING_CHANGE' | 'INITIAL_LINEUP' | 'OTHER';
+  playerInId?: string;
+  playerOutId?: string;
+  positionFrom?: string;
+  positionTo?: string;
+  battingOrderFrom?: number;
+  battingOrderTo?: number;
   teamId: string;
-  battingOrder: number;
-  fieldingPosition: number;
-  changeType: 'substitution' | 'position_change' | 'batting_order_change';
+  description: string;
 }
 
 /**
