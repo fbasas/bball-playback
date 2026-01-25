@@ -72,10 +72,36 @@ export function parseDetailedEvent(eventString: string): DetailedBaseballEvent {
  * @param event The event object to update
  */
 function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): void {
-  // Handle hits (S, D, T, HR)
+  // Handle base running events FIRST (before hits) to avoid SB being parsed as S
+  if (/^SB[23H]/.test(primaryEvent)) {
+    event.primaryEventType = 'SB';
+    const base = primaryEvent.substring(2);
+    event.baseRunning.push({
+      runner: '',  // Will be filled in from context
+      fromBase: base === '2' ? '1' : base === '3' ? '2' : '3',
+      toBase: base
+    });
+    return;
+  } else if (/^CS[23H]/.test(primaryEvent)) {
+    event.primaryEventType = 'CS';
+    const base = primaryEvent.substring(2);
+    event.baseRunning.push({
+      runner: '',  // Will be filled in from context
+      fromBase: base === '2' ? '1' : base === '3' ? '2' : '3',
+      toBase: base,
+      isOut: true
+    });
+    return;
+  }
+
+  // Handle hits (S, D, T, HR, DGR)
+  // Note: DGR must be checked before D to prevent false match
   if (/^S\d?/.test(primaryEvent)) {
     event.primaryEventType = 'S';
     parseHitLocation(primaryEvent.substring(1), event);
+  } else if (primaryEvent.startsWith('DGR')) {
+    event.primaryEventType = 'DGR';
+    parseHitLocation(primaryEvent.substring(3), event);
   } else if (/^D\d?/.test(primaryEvent)) {
     event.primaryEventType = 'D';
     parseHitLocation(primaryEvent.substring(1), event);
@@ -85,9 +111,6 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
   } else if (/^HR\d?/.test(primaryEvent)) {
     event.primaryEventType = 'HR';
     parseHitLocation(primaryEvent.substring(2), event);
-  } else if (primaryEvent.startsWith('DGR')) {
-    event.primaryEventType = 'DGR';
-    parseHitLocation(primaryEvent.substring(3), event);
   }
   
   // Handle outs (K, G, F, L, P)
@@ -98,8 +121,15 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
   } else if (/^G\d+/.test(primaryEvent)) {
     event.primaryEventType = 'G';
     event.isOut = true;
-    event.outCount = 1;
-    parseFielders(primaryEvent.substring(1), event);
+    const fielderString = primaryEvent.substring(1);
+    // Check for double play (e.g., G63 = 6-3 double play)
+    if (fielderString.length >= 2) {
+      event.isDoublePlay = true;
+      event.outCount = 2;
+    } else {
+      event.outCount = 1;
+    }
+    parseFielders(fielderString, event);
   } else if (/^F\d+/.test(primaryEvent)) {
     event.primaryEventType = 'F';
     event.isOut = true;
@@ -153,25 +183,8 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
     }
   }
   
-  // Handle base running events
-  else if (/^SB[23H]/.test(primaryEvent)) {
-    event.primaryEventType = 'SB';
-    const base = primaryEvent.substring(2);
-    event.baseRunning.push({
-      runner: '',  // Will be filled in from context
-      fromBase: base === '2' ? '1' : base === '3' ? '2' : '3',
-      toBase: base
-    });
-  } else if (/^CS[23H]/.test(primaryEvent)) {
-    event.primaryEventType = 'CS';
-    const base = primaryEvent.substring(2);
-    event.baseRunning.push({
-      runner: '',  // Will be filled in from context
-      fromBase: base === '2' ? '1' : base === '3' ? '2' : '3',
-      toBase: base,
-      isOut: true
-    });
-  } else if (/^PO[123]/.test(primaryEvent)) {
+  // Handle base running events (SB and CS handled above)
+  else if (/^PO[123]/.test(primaryEvent)) {
     event.primaryEventType = 'PO';
     const base = primaryEvent.substring(2);
     event.baseRunning.push({
@@ -202,7 +215,7 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
     event.primaryEventType = 'NP';
   }
   
-  // Handle fielder-to-fielder plays (e.g., 31, 643)
+  // Handle fielder-to-fielder plays (e.g., 31, 643) and single fielder plays (e.g., 7)
   else if (/^[1-9]+$/.test(primaryEvent)) {
     // Determine if it's a double play or triple play
     if (primaryEvent.length === 3) {
@@ -214,12 +227,9 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
     } else {
       event.outCount = 1;
     }
-    
+
     event.isOut = true;
-    
-    // Don't set a default event type, it will be determined by modifiers
-    event.primaryEventType = '';
-    
+
     // Parse the fielders
     for (let i = 0; i < primaryEvent.length; i++) {
       const fielderPosition = parseInt(primaryEvent[i], 10);
@@ -227,6 +237,16 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
         position: fielderPosition,
         role: i === 0 ? 'primary' : i === primaryEvent.length - 1 ? 'putout' : 'assist'
       });
+    }
+
+    // Determine default event type based on fielder positions
+    // Single fielder: outfielders (7-9) default to flyout, infielders (1-6) default to groundout
+    // Multi-fielder: default to groundout (can be overridden by modifiers)
+    if (primaryEvent.length === 1) {
+      const fielderPosition = parseInt(primaryEvent, 10);
+      event.primaryEventType = fielderPosition >= 7 && fielderPosition <= 9 ? 'F' : 'G';
+    } else {
+      event.primaryEventType = 'G';
     }
   }
 }
@@ -237,14 +257,19 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
  * @param event The event object to update
  */
 function parseModifiers(modifiers: string[], event: DetailedBaseballEvent): void {
+  // Check if primary event is a single fielder number (e.g., "7" or "8")
+  // In this case, modifiers should override the default event type
+  const primaryPart = event.rawEvent.split('/')[0];
+  const isSingleFielderPlay = /^[1-9]$/.test(primaryPart);
+
   for (const modifier of modifiers) {
     // Parse location modifiers
     if (modifier.startsWith('F')) {
       event.location.trajectory = 'fly ball';
       parseLocationCode(modifier.substring(1), event);
-      
-      // If the primary event type is not set and we have a fielder, it's a flyout
-      if (!event.primaryEventType && event.fielders.length > 0) {
+
+      // Override event type for single fielder plays, or set if not set
+      if (isSingleFielderPlay || (!event.primaryEventType && event.fielders.length > 0)) {
         event.primaryEventType = 'F';
         event.isOut = true;
         event.outCount = 1;
@@ -252,9 +277,9 @@ function parseModifiers(modifiers: string[], event: DetailedBaseballEvent): void
     } else if (modifier.startsWith('L')) {
       event.location.trajectory = 'line drive';
       parseLocationCode(modifier.substring(1), event);
-      
-      // If the primary event type is not set and we have a fielder, it's a lineout
-      if (!event.primaryEventType && event.fielders.length > 0) {
+
+      // Override event type for single fielder plays, or set if not set
+      if (isSingleFielderPlay || (!event.primaryEventType && event.fielders.length > 0)) {
         event.primaryEventType = 'L';
         event.isOut = true;
         event.outCount = 1;
@@ -262,9 +287,9 @@ function parseModifiers(modifiers: string[], event: DetailedBaseballEvent): void
     } else if (modifier.startsWith('G')) {
       event.location.trajectory = 'ground ball';
       parseLocationCode(modifier.substring(1), event);
-      
-      // If the primary event type is not set and we have a fielder, it's a groundout
-      if (!event.primaryEventType && event.fielders.length > 0) {
+
+      // Override event type for single fielder plays, or set if not set
+      if (isSingleFielderPlay || (!event.primaryEventType && event.fielders.length > 0)) {
         event.primaryEventType = 'G';
         event.isOut = true;
         event.outCount = 1;
@@ -272,9 +297,9 @@ function parseModifiers(modifiers: string[], event: DetailedBaseballEvent): void
     } else if (modifier.startsWith('P')) {
       event.location.trajectory = 'popup';
       parseLocationCode(modifier.substring(1), event);
-      
-      // If the primary event type is not set and we have a fielder, it's a popup
-      if (!event.primaryEventType && event.fielders.length > 0) {
+
+      // Override event type for single fielder plays, or set if not set
+      if (isSingleFielderPlay || (!event.primaryEventType && event.fielders.length > 0)) {
         event.primaryEventType = 'P';
         event.isOut = true;
         event.outCount = 1;

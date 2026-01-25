@@ -253,7 +253,8 @@ describe('Event Translation', () => {
 
     it('should translate HR/F78', () => {
       const description = translateEvent('HR/F78');
-      expect(description).toBe('Home run to center field');
+      // F78 means between left fielder (7) and center fielder (8), which is left-center
+      expect(description).toBe('Home run to left-center field');
     });
 
     it('should translate HR/F7LD', () => {

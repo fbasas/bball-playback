@@ -183,11 +183,16 @@ function translateFielders(event: DetailedBaseballEvent): string {
   
   // For outs, return the primary fielder
   if (event.isOut) {
-    // If we have a fielder-to-fielder play, it's handled in translatePrimaryEvent
+    // If it's a double play or triple play, fielder info is already in translatePrimaryEvent
+    if (event.isDoublePlay || event.isTriplePlay) {
+      return '';
+    }
+
+    // If we have a fielder-to-fielder play (e.g., 31, 643), it's handled in translatePrimaryEvent
     if (event.fielders.length >= 2 && /^[1-9]+$/.test(event.rawEvent.split('/')[0])) {
       return '';
     }
-    
+
     const primaryFielder = event.fielders.find(f => f.role === 'primary');
     if (primaryFielder) {
       return `to ${FIELD_POSITION_NAMES[primaryFielder.position] || 'fielder'}`;
