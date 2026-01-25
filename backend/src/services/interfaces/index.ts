@@ -531,11 +531,19 @@ export interface ILineupTrackingService {
 }
 
 // =============================================================================
-// Future Service Interfaces (to be implemented)
+// GamePlaybackService Interface
 // =============================================================================
 
 /**
- * Game state for playback
+ * Options for getNextPlay
+ */
+export interface NextPlayOptions {
+  skipLLM?: boolean;
+  announcerStyle?: AnnouncerStyle;
+}
+
+/**
+ * Game state for playback (for future session management)
  */
 export interface GamePlaybackState {
   gameId: string;
@@ -545,47 +553,43 @@ export interface GamePlaybackState {
 }
 
 /**
- * Result of advancing to the next play
- */
-export interface PlaybackResult {
-  state: SimplifiedBaseballState;
-  commentary: string[];
-  isGameOver: boolean;
-}
-
-/**
- * Interface for GamePlaybackService (to be implemented)
+ * Interface for GamePlaybackService
  *
- * Orchestrates the entire game playback flow.
+ * Orchestrates the entire game playback flow, extracting logic from route handlers.
+ * Returns SimplifiedBaseballState directly to match existing API contract.
  */
 export interface IGamePlaybackService {
   /**
-   * Initializes a new game session
+   * Initializes a new game session (currentPlay === 0)
    * @param gameId The game ID
-   * @returns The initial game state
+   * @param sessionId The session ID
+   * @param options Playback options (skipLLM, announcerStyle)
+   * @returns The initial simplified baseball state
    */
-  initializeGame(gameId: string): Promise<GamePlaybackState>;
+  initializeGame(
+    gameId: string,
+    sessionId: string,
+    options?: NextPlayOptions
+  ): Promise<SimplifiedBaseballState>;
 
   /**
-   * Advances to the next play
+   * Gets the next play in the game sequence
+   * Handles both initialization (currentPlay === 0) and regular play advancement
    * @param gameId The game ID
    * @param sessionId The session ID
    * @param currentPlayIndex The current play index
-   * @param options Playback options
-   * @returns The playback result
+   * @param options Playback options (skipLLM, announcerStyle)
+   * @returns The simplified baseball state for the next play
    */
   getNextPlay(
     gameId: string,
     sessionId: string,
     currentPlayIndex: number,
-    options?: {
-      skipLLM?: boolean;
-      announcerStyle?: AnnouncerStyle;
-    }
-  ): Promise<PlaybackResult>;
+    options?: NextPlayOptions
+  ): Promise<SimplifiedBaseballState>;
 
   /**
-   * Gets the current game state
+   * Gets the current game state (for future session management)
    * @param gameId The game ID
    * @param sessionId The session ID
    * @returns The current game state
