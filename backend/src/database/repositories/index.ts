@@ -5,3 +5,4 @@ export * from './PlayerRepository';
 export * from './PlayRepository';
 export * from './ScoreRepository';
 export * from './GameRepository';
+export * from './TeamStatsRepository';
