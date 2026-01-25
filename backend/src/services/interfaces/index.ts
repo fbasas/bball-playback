@@ -79,13 +79,47 @@ export interface IPlayerService {
 }
 
 /**
+ * Team identification result
+ */
+export interface TeamIds {
+  homeTeamId: string;
+  visitorTeamId: string;
+}
+
+/**
  * Interface for ScoreService
  *
- * Handles score calculations for games.
+ * Handles score calculations for games. Contains all business logic.
+ * Data access is delegated to IScoreRepository.
  */
 export interface IScoreService {
   /**
+   * Determines which team is home and which is visitor from play data
+   * Pure function - no database access
+   * @param playData The play data to analyze
+   * @returns Object with homeTeamId and visitorTeamId
+   */
+  determineTeams(playData: PlayData): TeamIds;
+
+  /**
+   * Computes the score result from raw run totals
+   * Pure function - no database access
+   * @param homeRunsBefore Total home runs before the play
+   * @param visitorRunsBefore Total visitor runs before the play
+   * @param nextPlayData The next play data (to determine runs scored)
+   * @param homeTeamId The home team ID (to determine who scored)
+   * @returns Score result with before and after scores
+   */
+  computeScoreResult(
+    homeRunsBefore: number,
+    visitorRunsBefore: number,
+    nextPlayData: PlayData,
+    homeTeamId: string
+  ): ScoreResult;
+
+  /**
    * Calculates the cumulative score for home and visiting teams
+   * Orchestrates data fetching and business logic
    * @param gameId The game ID
    * @param currentPlay The current play index
    * @param currentPlayData The current play data
@@ -93,21 +127,6 @@ export interface IScoreService {
    * @returns Score result with scores before and after the play
    */
   calculateScore(
-    gameId: string,
-    currentPlay: number,
-    currentPlayData: PlayData,
-    nextPlayData: PlayData
-  ): Promise<ScoreResult>;
-
-  /**
-   * Optimized version of calculateScore for better performance
-   * @param gameId The game ID
-   * @param currentPlay The current play index
-   * @param currentPlayData The current play data
-   * @param nextPlayData The next play data
-   * @returns Score result with scores before and after the play
-   */
-  calculateScoreOptimized(
     gameId: string,
     currentPlay: number,
     currentPlayData: PlayData,
@@ -296,38 +315,27 @@ export interface IPlayerRepository {
 /**
  * Interface for ScoreRepository
  *
- * Data access layer for score calculations.
+ * Thin data access layer for score data. No business logic - just SQL queries.
+ * Business logic (team determination, score calculations) belongs in ScoreService.
  */
 export interface IScoreRepository {
   /**
-   * Calculates the cumulative score
+   * Gets the total runs scored by a team up to (and including) a specific play
    * @param gameId The game ID
-   * @param currentPlay The current play index
-   * @param currentPlayData The current play data
-   * @param nextPlayData The next play data
-   * @returns Score result
+   * @param teamId The team ID (batting team)
+   * @param upToPlay The play number to sum runs up to (inclusive)
+   * @returns Total runs scored by the team
    */
-  calculateScore(
-    gameId: string,
-    currentPlay: number,
-    currentPlayData: PlayData,
-    nextPlayData: PlayData
-  ): Promise<ScoreResult>;
+  getRunsForTeam(gameId: string, teamId: string, upToPlay: number): Promise<number>;
 
   /**
-   * Optimized version of calculateScore
+   * Gets the total runs scored by a team up to (but NOT including) a specific play
    * @param gameId The game ID
-   * @param currentPlay The current play index
-   * @param currentPlayData The current play data
-   * @param nextPlayData The next play data
-   * @returns Score result
+   * @param teamId The team ID (batting team)
+   * @param beforePlay The play number to sum runs before (exclusive)
+   * @returns Total runs scored by the team before this play
    */
-  calculateScoreOptimized(
-    gameId: string,
-    currentPlay: number,
-    currentPlayData: PlayData,
-    nextPlayData: PlayData
-  ): Promise<ScoreResult>;
+  getRunsForTeamBefore(gameId: string, teamId: string, beforePlay: number): Promise<number>;
 }
 
 /**

@@ -90,55 +90,42 @@ async function runTest() {
     
     // Test ScoreRepository
     logger.info('Testing ScoreRepository...');
-    
-    // Standard calculation (no cache)
-    const score1 = await measureExecutionTime(
-      () => scoreRepository.calculateScore(
-        GAME_ID,
-        2,
-        playDataCached.currentPlayData,
-        playDataCached.nextPlayData
-      ),
-      'ScoreRepository.calculateScore (no cache)'
+
+    // Determine teams from play data
+    const homeTeamId = playDataCached.nextPlayData.top_bot === 0
+      ? playDataCached.nextPlayData.pitteam
+      : playDataCached.nextPlayData.batteam;
+    const visitorTeamId = playDataCached.nextPlayData.top_bot === 0
+      ? playDataCached.nextPlayData.batteam
+      : playDataCached.nextPlayData.pitteam;
+
+    // Get runs for home team (no cache)
+    const homeRuns1 = await measureExecutionTime(
+      () => scoreRepository.getRunsForTeam(GAME_ID, homeTeamId, 2),
+      'ScoreRepository.getRunsForTeam home (no cache)'
     );
-    logger.info(`Score before play - Home: ${score1.homeScoreBeforePlay}, Visitors: ${score1.visitorScoreBeforePlay}`);
-    logger.info(`Score after play - Home: ${score1.homeScoreAfterPlay}, Visitors: ${score1.visitorScoreAfterPlay}`);
-    
-    // Standard calculation (with cache)
-    const score2 = await measureExecutionTime(
-      () => scoreRepository.calculateScore(
-        GAME_ID,
-        2,
-        playDataCached.currentPlayData,
-        playDataCached.nextPlayData
-      ),
-      'ScoreRepository.calculateScore (with cache)'
+    logger.info(`Home team runs up to play 2: ${homeRuns1}`);
+
+    // Get runs for home team (with cache)
+    const homeRuns2 = await measureExecutionTime(
+      () => scoreRepository.getRunsForTeam(GAME_ID, homeTeamId, 2),
+      'ScoreRepository.getRunsForTeam home (with cache)'
     );
-    logger.info(`Score before play (cached) - Home: ${score2.homeScoreBeforePlay}, Visitors: ${score2.visitorScoreBeforePlay}`);
-    
-    // Optimized calculation (no cache)
-    const score3 = await measureExecutionTime(
-      () => scoreRepository.calculateScoreOptimized(
-        GAME_ID,
-        2,
-        playDataCached.currentPlayData,
-        playDataCached.nextPlayData
-      ),
-      'ScoreRepository.calculateScoreOptimized (no cache)'
+    logger.info(`Home team runs up to play 2 (cached): ${homeRuns2}`);
+
+    // Get runs for visitor team (no cache)
+    const visitorRuns1 = await measureExecutionTime(
+      () => scoreRepository.getRunsForTeam(GAME_ID, visitorTeamId, 2),
+      'ScoreRepository.getRunsForTeam visitor (no cache)'
     );
-    logger.info(`Score before play (optimized) - Home: ${score3.homeScoreBeforePlay}, Visitors: ${score3.visitorScoreBeforePlay}`);
-    
-    // Optimized calculation (with cache)
-    const score4 = await measureExecutionTime(
-      () => scoreRepository.calculateScoreOptimized(
-        GAME_ID,
-        2,
-        playDataCached.currentPlayData,
-        playDataCached.nextPlayData
-      ),
-      'ScoreRepository.calculateScoreOptimized (with cache)'
+    logger.info(`Visitor team runs up to play 2: ${visitorRuns1}`);
+
+    // Get runs for visitor team (with cache)
+    const visitorRuns2 = await measureExecutionTime(
+      () => scoreRepository.getRunsForTeam(GAME_ID, visitorTeamId, 2),
+      'ScoreRepository.getRunsForTeam visitor (with cache)'
     );
-    logger.info(`Score before play (optimized, cached) - Home: ${score4.homeScoreBeforePlay}, Visitors: ${score4.visitorScoreBeforePlay}`);
+    logger.info(`Visitor team runs up to play 2 (cached): ${visitorRuns2}`);
     
     // Test GameRepository
     logger.info('Testing GameRepository...');

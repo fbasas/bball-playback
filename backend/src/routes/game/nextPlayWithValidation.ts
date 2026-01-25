@@ -213,8 +213,8 @@ export const getNextPlay: RequestHandler = async (req, res, next) => {
             nextPlayData
         );
         
-        // Calculate scores using the optimized method
-        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScoreOptimized(
+        // Calculate scores
+        const { homeScoreBeforePlay, visitorScoreBeforePlay } = await ScoreService.calculateScore(
             gameId,
             currentPlay,
             currentPlayData,
