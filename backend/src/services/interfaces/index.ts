@@ -1,0 +1,581 @@
+/**
+ * Service interfaces for dependency injection
+ *
+ * These interfaces define contracts for all major services, enabling:
+ * - Clean mocking in tests
+ * - Dependency injection
+ * - Loose coupling between components
+ */
+
+import { PlayData, PlayDataResult } from '../../../../common/types/PlayData';
+import { BaseballState } from '../../../../common/types/BaseballTypes';
+import { SimplifiedBaseballState } from '../../../../common/types/SimplifiedBaseballState';
+
+// Re-export types that are commonly used with these interfaces
+export { PlayData, PlayDataResult } from '../../../../common/types/PlayData';
+export { BaseballState } from '../../../../common/types/BaseballTypes';
+export { SimplifiedBaseballState } from '../../../../common/types/SimplifiedBaseballState';
+
+/**
+ * Player information returned by player services
+ */
+export interface PlayerInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+}
+
+/**
+ * Score calculation result
+ */
+export interface ScoreResult {
+  homeScoreBeforePlay: number;
+  visitorScoreBeforePlay: number;
+  homeScoreAfterPlay: number;
+  visitorScoreAfterPlay: number;
+}
+
+/**
+ * Announcer style options for commentary generation
+ */
+export type AnnouncerStyle = 'classic' | 'modern' | 'enthusiastic' | 'poetic';
+
+// =============================================================================
+// Service Interfaces
+// =============================================================================
+
+/**
+ * Interface for PlayerService
+ *
+ * Provides methods for retrieving player information from the database.
+ */
+export interface IPlayerService {
+  /**
+   * Gets player information by ID
+   * @param playerId The player ID or null/undefined
+   * @returns The player information or null if not found
+   */
+  getPlayerById(playerId: string | null | undefined): Promise<PlayerInfo | null>;
+
+  /**
+   * Gets player information for multiple player IDs
+   * @param playerIds Array of player IDs to retrieve
+   * @returns Map of player IDs to player information
+   */
+  getPlayersByIds(playerIds: string[]): Promise<Map<string, PlayerInfo>>;
+
+  /**
+   * Gets the full name of a player
+   * @param playerId The player ID or null/undefined
+   * @returns The player's full name or null if not found
+   */
+  getPlayerName(playerId: string | null | undefined): Promise<string | null>;
+
+  /**
+   * Clears the player cache
+   */
+  clearCache(): void;
+}
+
+/**
+ * Interface for ScoreService
+ *
+ * Handles score calculations for games.
+ */
+export interface IScoreService {
+  /**
+   * Calculates the cumulative score for home and visiting teams
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns Score result with scores before and after the play
+   */
+  calculateScore(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult>;
+
+  /**
+   * Optimized version of calculateScore for better performance
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns Score result with scores before and after the play
+   */
+  calculateScoreOptimized(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult>;
+}
+
+/**
+ * Interface for PlayDataService
+ *
+ * Handles retrieval and validation of play data from the database.
+ */
+export interface IPlayDataService {
+  /**
+   * Fetches the first play for a game
+   * @param gameId The game ID
+   * @returns The first play data
+   */
+  fetchFirstPlay(gameId: string): Promise<PlayData>;
+
+  /**
+   * Fetches play data for a game based on the current play index
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @returns Current and next play data
+   */
+  fetchPlayData(gameId: string, currentPlay: number): Promise<PlayDataResult>;
+
+  /**
+   * Fetches the play for a specific batter
+   * @param gameId The game ID
+   * @param batter The batter ID
+   * @returns The play data for the batter, or null if not found
+   */
+  fetchPlayForBatter(gameId: string, batter: string): Promise<PlayData | null>;
+}
+
+/**
+ * Interface for CommentaryService
+ *
+ * Generates play-by-play commentary using AI.
+ */
+export interface ICommentaryService {
+  /**
+   * Generates play completion text
+   * @param currentState The current baseball state
+   * @param nextPlay The next play data
+   * @param currentPlay The current play index
+   * @param skipLLM Whether to skip LLM calls (for testing)
+   * @param gameId The game ID
+   * @returns Array of commentary lines
+   */
+  generatePlayCompletion(
+    currentState: BaseballState,
+    nextPlay: PlayData,
+    currentPlay: number,
+    skipLLM: boolean,
+    gameId: string
+  ): Promise<string[]>;
+
+  /**
+   * Generates detailed play-by-play commentary
+   * @param currentState The current baseball state
+   * @param currentPlay The current play data
+   * @param currentPlayIndex The current play index
+   * @param skipLLM Whether to skip LLM calls (for testing)
+   * @param gameId The game ID
+   * @param announcerStyle Optional announcer style
+   * @returns Array of commentary lines
+   */
+  generateDetailedPlayCompletion(
+    currentState: BaseballState,
+    currentPlay: PlayData,
+    currentPlayIndex: number,
+    skipLLM: boolean,
+    gameId: string,
+    announcerStyle?: AnnouncerStyle
+  ): Promise<string[]>;
+
+  /**
+   * Sets the AI adapter to use for generating completions
+   * @param adapterName The name of the adapter to use
+   */
+  setAIAdapter(adapterName: string): void;
+}
+
+/**
+ * Interface for LineupService
+ *
+ * Manages baseball team lineups, including tracking player positions,
+ * batting orders, and changes throughout the game.
+ */
+export interface ILineupService {
+  /**
+   * Updates lineup information in the simplified state
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @param nextPlayData The next play data
+   * @param simplifiedState The simplified baseball state to update
+   */
+  updateLineupInfo(
+    gameId: string,
+    sessionId: string,
+    nextPlayData: PlayData,
+    simplifiedState: SimplifiedBaseballState
+  ): Promise<void>;
+
+  /**
+   * Processes lineup changes between plays
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   */
+  processLineupChanges(
+    gameId: string,
+    sessionId: string,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<void>;
+
+  /**
+   * Gets the next batter for a team
+   * @param gameId The game ID
+   * @param teamId The team ID
+   * @param currentBatterId The current batter ID
+   * @returns The next batter's name or null if not found
+   */
+  getNextBatter(
+    gameId: string,
+    teamId: string,
+    currentBatterId: string | null
+  ): Promise<string | null>;
+}
+
+/**
+ * Interface for LineupChangeDetector
+ *
+ * Detects lineup changes between plays.
+ */
+export interface ILineupChangeDetector {
+  /**
+   * Processes lineup changes and returns the new lineup state ID
+   * @returns The new lineup state ID or null if no changes
+   */
+  process(): Promise<number | null>;
+}
+
+// =============================================================================
+// Repository Interfaces
+// =============================================================================
+
+/**
+ * Interface for PlayerRepository
+ *
+ * Data access layer for player information.
+ */
+export interface IPlayerRepository {
+  /**
+   * Gets player information by ID
+   * @param playerId The player ID
+   * @returns The player information or null if not found
+   */
+  getPlayerById(playerId: string): Promise<PlayerInfo | null>;
+
+  /**
+   * Gets player information for multiple player IDs
+   * @param playerIds Array of player IDs to retrieve
+   * @returns Map of player IDs to player information
+   */
+  getPlayersByIds(playerIds: string[]): Promise<Map<string, PlayerInfo>>;
+
+  /**
+   * Gets the full name of a player
+   * @param playerId The player ID
+   * @returns The player's full name or null if not found
+   */
+  getPlayerName(playerId: string): Promise<string | null>;
+
+  /**
+   * Clears the player cache
+   */
+  clearCache(): void;
+}
+
+/**
+ * Interface for ScoreRepository
+ *
+ * Data access layer for score calculations.
+ */
+export interface IScoreRepository {
+  /**
+   * Calculates the cumulative score
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns Score result
+   */
+  calculateScore(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult>;
+
+  /**
+   * Optimized version of calculateScore
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @param currentPlayData The current play data
+   * @param nextPlayData The next play data
+   * @returns Score result
+   */
+  calculateScoreOptimized(
+    gameId: string,
+    currentPlay: number,
+    currentPlayData: PlayData,
+    nextPlayData: PlayData
+  ): Promise<ScoreResult>;
+}
+
+/**
+ * Interface for PlayRepository
+ *
+ * Data access layer for play data.
+ */
+export interface IPlayRepository {
+  /**
+   * Fetches the first play for a game
+   * @param gameId The game ID
+   * @returns The first play data
+   */
+  fetchFirstPlay(gameId: string): Promise<PlayData>;
+
+  /**
+   * Fetches play data for a game
+   * @param gameId The game ID
+   * @param currentPlay The current play index
+   * @returns Current and next play data
+   */
+  fetchPlayData(gameId: string, currentPlay: number): Promise<PlayDataResult>;
+
+  /**
+   * Fetches the play for a specific batter
+   * @param gameId The game ID
+   * @param batter The batter ID
+   * @returns The play data or null
+   */
+  fetchPlayForBatter(gameId: string, batter: string): Promise<PlayData | null>;
+
+  /**
+   * Fetches all plays for a game
+   * @param gameId The game ID
+   * @returns Array of all play data
+   */
+  fetchAllPlaysForGame(gameId: string): Promise<PlayData[]>;
+
+  /**
+   * Fetches plays up to a specific play index
+   * @param gameId The game ID
+   * @param upToPlay The play index to fetch up to
+   * @returns Array of play data
+   */
+  fetchPlaysUpTo(gameId: string, upToPlay: number): Promise<PlayData[]>;
+}
+
+/**
+ * Starting lineup data for a team
+ */
+export interface StartingLineup {
+  battingOrder: string[]; // Player IDs in batting order (1-9)
+  pitcher: string | null; // Starting pitcher ID
+}
+
+/**
+ * Team stats data from the database
+ */
+export interface TeamStatsData {
+  team: string;
+  start_l1: string;
+  start_l2: string;
+  start_l3: string;
+  start_l4: string;
+  start_l5: string;
+  start_l6: string;
+  start_l7: string;
+  start_l8: string;
+  start_l9: string;
+  start_f1: string; // Starting pitcher
+}
+
+/**
+ * Interface for TeamStatsRepository
+ *
+ * Data access layer for team statistics, including starting lineups.
+ */
+export interface ITeamStatsRepository {
+  /**
+   * Gets team stats for a game
+   * @param gameId The game ID
+   * @returns Array of team stats (home and visitor)
+   */
+  getTeamStatsForGame(gameId: string): Promise<TeamStatsData[]>;
+
+  /**
+   * Gets the starting lineup for a team
+   * @param gameId The game ID
+   * @param teamId The team ID
+   * @returns The starting lineup
+   */
+  getStartingLineup(gameId: string, teamId: string): Promise<StartingLineup>;
+
+  /**
+   * Gets the starting pitcher for a team
+   * @param gameId The game ID
+   * @param teamId The team ID
+   * @returns The starting pitcher ID or null
+   */
+  getStartingPitcher(gameId: string, teamId: string): Promise<string | null>;
+}
+
+// =============================================================================
+// Lineup Tracking Interfaces (from lineupTracking.ts)
+// =============================================================================
+
+/**
+ * Lineup state data
+ */
+export interface LineupStateData {
+  gameId: string;
+  sessionId: string;
+  playIndex: number;
+  inning: number;
+  isTopInning: boolean;
+  outs: number;
+}
+
+/**
+ * Lineup player data
+ */
+export interface LineupPlayerData {
+  playerId: string;
+  teamId: string;
+  battingOrder: number;
+  fieldingPosition: number;
+}
+
+/**
+ * Lineup change data
+ */
+export interface LineupChangeData {
+  playerIn: string;
+  playerOut: string;
+  teamId: string;
+  battingOrder: number;
+  fieldingPosition: number;
+  changeType: 'substitution' | 'position_change' | 'batting_order_change';
+}
+
+/**
+ * Interface for LineupTrackingService
+ *
+ * Handles lineup state persistence and retrieval.
+ */
+export interface ILineupTrackingService {
+  /**
+   * Gets the latest lineup state for a game session
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @returns The latest lineup state or null
+   */
+  getLatestLineupState(gameId: string, sessionId: string): Promise<{
+    id: number;
+    playIndex: number;
+    players: LineupPlayerData[];
+  } | null>;
+
+  /**
+   * Saves a new lineup state
+   * @param stateData The lineup state data
+   * @param players The players in the lineup
+   * @param changes The lineup changes
+   * @returns The new lineup state ID
+   */
+  saveLineupState(
+    stateData: LineupStateData,
+    players: LineupPlayerData[],
+    changes: LineupChangeData[]
+  ): Promise<number>;
+
+  /**
+   * Saves the initial lineup for a game
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @param homeLineup Home team lineup
+   * @param visitorLineup Visitor team lineup
+   * @param playIndex The play index
+   * @returns The new lineup state ID
+   */
+  saveInitialLineup(
+    gameId: string,
+    sessionId: string,
+    homeLineup: LineupPlayerData[],
+    visitorLineup: LineupPlayerData[],
+    playIndex: number
+  ): Promise<number>;
+}
+
+// =============================================================================
+// Future Service Interfaces (to be implemented)
+// =============================================================================
+
+/**
+ * Game state for playback
+ */
+export interface GamePlaybackState {
+  gameId: string;
+  sessionId: string;
+  currentPlayIndex: number;
+  baseballState: SimplifiedBaseballState;
+}
+
+/**
+ * Result of advancing to the next play
+ */
+export interface PlaybackResult {
+  state: SimplifiedBaseballState;
+  commentary: string[];
+  isGameOver: boolean;
+}
+
+/**
+ * Interface for GamePlaybackService (to be implemented)
+ *
+ * Orchestrates the entire game playback flow.
+ */
+export interface IGamePlaybackService {
+  /**
+   * Initializes a new game session
+   * @param gameId The game ID
+   * @returns The initial game state
+   */
+  initializeGame(gameId: string): Promise<GamePlaybackState>;
+
+  /**
+   * Advances to the next play
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @param currentPlayIndex The current play index
+   * @param options Playback options
+   * @returns The playback result
+   */
+  getNextPlay(
+    gameId: string,
+    sessionId: string,
+    currentPlayIndex: number,
+    options?: {
+      skipLLM?: boolean;
+      announcerStyle?: AnnouncerStyle;
+    }
+  ): Promise<PlaybackResult>;
+
+  /**
+   * Gets the current game state
+   * @param gameId The game ID
+   * @param sessionId The session ID
+   * @returns The current game state
+   */
+  getCurrentGameState(gameId: string, sessionId: string): Promise<GamePlaybackState>;
+}
