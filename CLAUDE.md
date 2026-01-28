@@ -11,6 +11,7 @@
 - Only use mocks in production code if explicitly requested by the user
 - Unit tests should inject mock repositories to test service business logic
 - Integration tests use real database connections
+- **Always run jest from `backend/`** (e.g. `cd backend && npx jest`), not from the project root. The root resolves jest 30.x (babel, no TS support) while `backend/` has jest 29.x with ts-jest configured.
 
 ### Dependency Injection Pattern
 Services receive their dependencies via constructor injection:
