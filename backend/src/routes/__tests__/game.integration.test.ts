@@ -224,20 +224,6 @@ describe('Game Routes Integration Tests', () => {
   });
 
   describe('GET /api/game/init/:gameId', () => {
-    // Skipped: deprecated endpoint requires complex DB/prompt mocking
-    it.skip('should initialize a game with valid game ID', async () => {
-      const response = await request(app)
-        .get('/api/game/init/TEST_GAME_001')
-        .set('session-id', VALID_SESSION_ID)
-        .expect('Content-Type', /json/)
-        .expect(200);
-
-      expect(response.body).toHaveProperty('gameId', 'TEST_GAME_001');
-      expect(response.body).toHaveProperty('game');
-      expect(response.body).toHaveProperty('home');
-      expect(response.body).toHaveProperty('visitors');
-    });
-
     it('should return 404 when game ID is missing', async () => {
       await request(app)
         .get('/api/game/init/')
