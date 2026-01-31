@@ -336,6 +336,14 @@ export interface IScoreRepository {
    * @returns Total runs scored by the team before this play
    */
   getRunsForTeamBefore(gameId: string, teamId: string, beforePlay: number): Promise<number>;
+
+  /**
+   * Preloads cumulative scores for all plays in a game into the cache.
+   * Call before iterating through a game to avoid per-play SUM queries.
+   * @param gameId The game ID
+   * @returns Object with team IDs found and play count
+   */
+  preloadCumulativeScores(gameId: string): Promise<{ teams: string[]; playCount: number }>;
 }
 
 /**

@@ -55,6 +55,64 @@ export class ScoreRepository extends CachedRepository<any, string> implements IS
   }
 
   /**
+   * Preloads cumulative scores for all plays in a game into the cache.
+   * This converts O(N) SUM queries into a single query + O(N) cache writes.
+   *
+   * Call this before iterating through a game's plays to avoid per-play queries.
+   *
+   * @param gameId The game ID
+   * @returns Object with team IDs found and play count
+   */
+  async preloadCumulativeScores(gameId: string): Promise<{ teams: string[]; playCount: number }> {
+    try {
+      // Fetch all plays for this game in one query
+      const plays = await db('plays')
+        .where({ gid: gameId })
+        .orderBy('pn', 'asc')
+        .select('pn', 'batteam', 'runs');
+
+      if (plays.length === 0) {
+        return { teams: [], playCount: 0 };
+      }
+
+      // Build running totals per team
+      const teamTotals: Map<string, number> = new Map();
+      const teams = new Set<string>();
+
+      for (const play of plays) {
+        const teamId = play.batteam;
+        const runs = play.runs || 0;
+        teams.add(teamId);
+
+        // Update running total for this team
+        const currentTotal = (teamTotals.get(teamId) || 0) + runs;
+        teamTotals.set(teamId, currentTotal);
+
+        // Cache the cumulative score for this (team, playNumber) combination
+        const cacheKey = `${this.cacheKeyPrefix}:runs:${gameId}:${teamId}:${play.pn}`;
+        this.entityCache.set(cacheKey, currentTotal);
+
+        // Also cache scores for teams that didn't bat this play (their total stays the same)
+        for (const otherTeam of teams) {
+          if (otherTeam !== teamId) {
+            const otherCacheKey = `${this.cacheKeyPrefix}:runs:${gameId}:${otherTeam}:${play.pn}`;
+            // Only set if not already cached (preserve existing values)
+            if (this.entityCache.get(otherCacheKey) === undefined) {
+              this.entityCache.set(otherCacheKey, teamTotals.get(otherTeam) || 0);
+            }
+          }
+        }
+      }
+
+      return { teams: Array.from(teams), playCount: plays.length };
+    } catch (error) {
+      throw new DatabaseError(
+        `Error preloading scores for game ${gameId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
    * Gets the total runs scored by a team up to (but NOT including) a specific play
    * @param gameId The game ID
    * @param teamId The team ID (batting team)

@@ -22,6 +22,7 @@ import type { SimplifiedBaseballState } from '../../../../common/types/Simplifie
 // validation failures when REPLAY_TEST_DB_HOST is not set)
 let GamePlaybackService: any;
 let ResourceNotFoundError: any;
+let scoreRepository: any;
 
 // ---------------------------------------------------------------------------
 // Skip unless REPLAY_TEST_DB_HOST is set
@@ -80,6 +81,38 @@ async function getMaxPlayNumber(db: Knex, gameId: string): Promise<number> {
   return result?.maxPn ? Number(result.maxPn) : 0;
 }
 
+/**
+ * Builds in-memory cumulative score maps for fast validation lookups.
+ * Replaces O(N) SUM queries with a single query + O(1) lookups.
+ */
+async function buildCumulativeScores(
+  db: Knex,
+  gameId: string,
+  homeTeamId: string,
+  visitorTeamId: string
+): Promise<Map<number, { home: number; visitor: number }>> {
+  const plays = await db('plays')
+    .where({ gid: gameId })
+    .orderBy('pn', 'asc')
+    .select('pn', 'batteam', 'runs');
+
+  const scores = new Map<number, { home: number; visitor: number }>();
+  let homeTotal = 0;
+  let visitorTotal = 0;
+
+  for (const play of plays) {
+    const runs = play.runs || 0;
+    if (play.batteam === homeTeamId) {
+      homeTotal += runs;
+    } else if (play.batteam === visitorTeamId) {
+      visitorTotal += runs;
+    }
+    scores.set(play.pn, { home: homeTotal, visitor: visitorTotal });
+  }
+
+  return scores;
+}
+
 // ---------------------------------------------------------------------------
 // Seeded PRNG for reproducible random game selection
 // ---------------------------------------------------------------------------
@@ -112,6 +145,11 @@ async function playThroughGame(
   const scoreErrors: string[] = [];
   const progressInterval = 50; // Log progress every N plays
 
+  // Pre-load scores: warm service cache + build validation lookup
+  // This converts O(N) queries into 2 upfront queries
+  await scoreRepository.preloadCumulativeScores(gameId);
+  const expectedScores = await buildCumulativeScores(validationDb, gameId, homeTeamId, visitorTeamId);
+
   // Step 1: Initialize (currentPlay=0)
   let state = await GamePlaybackService.getNextPlay(gameId, sessionId, 0, {
     skipLLM: true,
@@ -139,11 +177,12 @@ async function playThroughGame(
         console.log(`[REPLAY TEST] Progress: ${playsProcessed} plays in ${elapsedSec}s (play ${state.currentPlay})`)
       }
 
-      // --- Per-play score validation ---
+      // --- Per-play score validation (O(1) lookup instead of query) ---
       // The state returned from getNextPlay(_, _, N) reflects score through play N+1
       // (i.e., state.currentPlay, not the input currentPlay)
-      const expectedHome = await getExpectedScore(validationDb, gameId, homeTeamId, state.currentPlay);
-      const expectedVisitor = await getExpectedScore(validationDb, gameId, visitorTeamId, state.currentPlay);
+      const expected = expectedScores.get(state.currentPlay);
+      const expectedHome = expected?.home ?? 0;
+      const expectedVisitor = expected?.visitor ?? 0;
 
       if (state.home.runs !== expectedHome) {
         scoreErrors.push(
@@ -182,6 +221,8 @@ describeIf('Game Playthrough E2E', () => {
     GamePlaybackService = playback.GamePlaybackService;
     const errors = await import('../../types/errors/GameErrors');
     ResourceNotFoundError = errors.ResourceNotFoundError;
+    const scoreRepo = await import('../../database/repositories/ScoreRepository');
+    scoreRepository = scoreRepo.scoreRepository;
 
     validationDb = createValidationDb();
   });
