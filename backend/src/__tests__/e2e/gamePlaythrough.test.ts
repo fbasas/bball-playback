@@ -110,6 +110,7 @@ async function playThroughGame(
   const { homeTeamId, visitorTeamId } = await getTeamIds(validationDb, gameId);
 
   const scoreErrors: string[] = [];
+  const progressInterval = 50; // Log progress every N plays
 
   // Step 1: Initialize (currentPlay=0)
   let state = await GamePlaybackService.getNextPlay(gameId, sessionId, 0, {
@@ -121,6 +122,7 @@ async function playThroughGame(
   let currentPlay = state.currentPlay;
   let previousPlay = 0;
   let playsProcessed = 0;
+  const loopStartTime = Date.now();
 
   // Step 2: Loop through all plays
   while (true) {
@@ -130,6 +132,12 @@ async function playThroughGame(
         skipLLM: true,
       });
       playsProcessed++;
+
+      // Progress logging
+      if (playsProcessed % progressInterval === 0) {
+        const elapsedSec = ((Date.now() - loopStartTime) / 1000).toFixed(1);
+        console.log(`[REPLAY TEST] Progress: ${playsProcessed} plays in ${elapsedSec}s (play ${state.currentPlay})`)
+      }
 
       // --- Per-play score validation ---
       // The state returned from getNextPlay(_, _, N) reflects score through play N+1
@@ -244,10 +252,22 @@ describeIf('Game Playthrough E2E', () => {
 
         const idx = Math.floor(rand() * allGids.length);
         const randomGid = allGids[idx];
-        console.log(`[REPLAY TEST] Random game selected (seed=42): ${randomGid}`);
+
+        // Get total play count for progress reporting
+        const totalPlaysResult = await validationDb('plays')
+          .where({ gid: randomGid })
+          .count('* as count')
+          .first();
+        const totalPlays = Number(totalPlaysResult?.count || 0);
+
+        console.log(`[REPLAY TEST] Random game selected (seed=42): ${randomGid} (${totalPlays} plays)`);
+        const startTime = Date.now();
 
         const { playsProcessed, scoreErrors } =
           await playThroughGame(validationDb, randomGid);
+
+        const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`[REPLAY TEST] Completed ${playsProcessed} plays in ${elapsedSec}s (${(playsProcessed / parseFloat(elapsedSec)).toFixed(1)} plays/sec)`);
 
         expect(playsProcessed).toBeGreaterThan(0);
 
@@ -258,7 +278,7 @@ describeIf('Game Playthrough E2E', () => {
         }
         expect(scoreErrors).toHaveLength(0);
       },
-      120000
+      300000  // 5 minutes - games with 150+ plays can be slow
     );
   });
 });
