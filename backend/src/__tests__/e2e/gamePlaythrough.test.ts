@@ -9,7 +9,9 @@
  *
  * Usage:
  *   cd backend
- *   REPLAY_TEST_DB_HOST=localhost npx jest gamePlaythrough --verbose --no-coverage
+ *   REPLAY_TEST_DB_HOST=localhost OPENAI_API_KEY=sk-dummy \
+ *     DB_HOST=localhost DB_NAME=retrosheet DB_USER=root DB_PASSWORD=root \
+ *     npx jest gamePlaythrough --verbose --no-coverage
  */
 
 import knex, { Knex } from 'knex';
@@ -130,18 +132,19 @@ async function playThroughGame(
       playsProcessed++;
 
       // --- Per-play score validation ---
-      // The state returned from getNextPlay(_, _, N) reflects score through play N
-      const expectedHome = await getExpectedScore(validationDb, gameId, homeTeamId, currentPlay);
-      const expectedVisitor = await getExpectedScore(validationDb, gameId, visitorTeamId, currentPlay);
+      // The state returned from getNextPlay(_, _, N) reflects score through play N+1
+      // (i.e., state.currentPlay, not the input currentPlay)
+      const expectedHome = await getExpectedScore(validationDb, gameId, homeTeamId, state.currentPlay);
+      const expectedVisitor = await getExpectedScore(validationDb, gameId, visitorTeamId, state.currentPlay);
 
       if (state.home.runs !== expectedHome) {
         scoreErrors.push(
-          `Play ${currentPlay}: home score ${state.home.runs} != expected ${expectedHome}`
+          `Play ${state.currentPlay}: home score ${state.home.runs} != expected ${expectedHome}`
         );
       }
       if (state.visitors.runs !== expectedVisitor) {
         scoreErrors.push(
-          `Play ${currentPlay}: visitor score ${state.visitors.runs} != expected ${expectedVisitor}`
+          `Play ${state.currentPlay}: visitor score ${state.visitors.runs} != expected ${expectedVisitor}`
         );
       }
 
@@ -176,7 +179,7 @@ describeIf('Game Playthrough E2E', () => {
   });
 
   afterAll(async () => {
-    await validationDb.destroy();
+    if (validationDb) await validationDb.destroy();
   });
 
   describe('Known game: NYA202410300 (World Series Game 5)', () => {
