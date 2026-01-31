@@ -6,7 +6,7 @@ import express = require('express');
 import cors = require('cors');
 import fs from 'fs';
 import path from 'path';
-import { TestRouter } from "./routes/test";
+import { TestRouter } from "./routes/testing";
 import { GameRouter } from "./routes/game/index";
 import { PerformanceRouter } from "./routes/performance";
 import { MetricsRouter } from "./routes/metrics";

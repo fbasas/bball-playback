@@ -138,7 +138,8 @@ describe('ScoreService', () => {
       if (teamId === 'HOM') return Promise.resolve(homeRuns);
       if (teamId === 'VIS') return Promise.resolve(visitorRuns);
       return Promise.resolve(0);
-    })
+    }),
+    preloadCumulativeScores: jest.fn().mockResolvedValue({ teams: ['HOM', 'VIS'], playCount: 0 })
   });
 
   describe('getInstance', () => {
@@ -390,7 +391,8 @@ describe('ScoreService', () => {
     it('should return 0-0 scores on repository error', async () => {
       const mockRepo: IScoreRepository = {
         getRunsForTeam: jest.fn().mockRejectedValue(new Error('Database error')),
-        getRunsForTeamBefore: jest.fn().mockRejectedValue(new Error('Database error'))
+        getRunsForTeamBefore: jest.fn().mockRejectedValue(new Error('Database error')),
+        preloadCumulativeScores: jest.fn().mockResolvedValue({ teams: [], playCount: 0 })
       };
       const service = new ScoreService(mockRepo);
 
