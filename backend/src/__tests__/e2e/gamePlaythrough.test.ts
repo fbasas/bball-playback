@@ -356,6 +356,28 @@ describeIf('Game Playthrough E2E', () => {
   });
 
   afterAll(async () => {
+    // Stop all background intervals that were started by imported modules
+    try {
+      const { systemMonitor } = await import('../../core/metrics/SystemMonitor');
+      systemMonitor.stopMonitoring();
+    } catch { /* ignore if not loaded */ }
+
+    try {
+      const { metricsCollector } = await import('../../core/metrics/MetricsCollector');
+      metricsCollector.stopCollectingSystemMetrics();
+    } catch { /* ignore if not loaded */ }
+
+    try {
+      const { alertManager } = await import('../../core/metrics/AlertManager');
+      alertManager.stop();
+    } catch { /* ignore if not loaded */ }
+
+    try {
+      const { connectionManager } = await import('../../core/database/ConnectionManager');
+      connectionManager.stopMonitoring();
+    } catch { /* ignore if not loaded */ }
+
+    // Close database connections
     if (validationDb) await validationDb.destroy();
     if (db) await db.destroy();
   });
