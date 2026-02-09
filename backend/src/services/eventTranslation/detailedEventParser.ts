@@ -94,6 +94,29 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
     return;
   }
 
+  // Handle sacrifice events BEFORE singles (to avoid SH/SF being parsed as S)
+  if (/^SH\d*/.test(primaryEvent)) {
+    event.primaryEventType = 'SH';
+    event.isOut = true;
+    event.outCount = 1;
+    // Extract fielders if present (e.g., SH13 = pitcher to first)
+    const fielderString = primaryEvent.substring(2);
+    if (fielderString) {
+      parseFielders(fielderString, event);
+    }
+    return;
+  } else if (/^SF\d*/.test(primaryEvent)) {
+    event.primaryEventType = 'SF';
+    event.isOut = true;
+    event.outCount = 1;
+    // Extract fielder if present (e.g., SF9 = to right fielder)
+    const fielderString = primaryEvent.substring(2);
+    if (fielderString) {
+      parseFielders(fielderString, event);
+    }
+    return;
+  }
+
   // Handle hits (S, D, T, HR, DGR)
   // Note: DGR must be checked before D to prevent false match
   if (/^S\d?/.test(primaryEvent)) {
@@ -214,7 +237,7 @@ function parsePrimaryEvent(primaryEvent: string, event: DetailedBaseballEvent): 
   } else if (primaryEvent === 'NP') {
     event.primaryEventType = 'NP';
   }
-  
+
   // Handle fielder-to-fielder plays (e.g., 31, 643) and single fielder plays (e.g., 7)
   else if (/^[1-9]+$/.test(primaryEvent)) {
     // Determine if it's a double play or triple play

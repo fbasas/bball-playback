@@ -733,7 +733,82 @@ describe('Event Translation', () => {
     });
 
     // -------------------------------------------------------------------------
-    // 1.18 Wild Pitch, Passed Ball, Balk
+    // 1.18 Sacrifice Hit (Bunt) Events
+    // -------------------------------------------------------------------------
+    describe('sacrifice hits', () => {
+      it('should parse SH (basic sacrifice bunt)', () => {
+        const event = parseDetailedEvent('SH');
+        expect(event.primaryEventType).toBe('SH');
+        expect(event.isOut).toBe(true);
+        expect(event.outCount).toBe(1);
+      });
+
+      it('should parse SH1 (sacrifice bunt to pitcher)', () => {
+        const event = parseDetailedEvent('SH1');
+        expect(event.primaryEventType).toBe('SH');
+        expect(event.isOut).toBe(true);
+        expect(event.fielders[0].position).toBe(1);
+      });
+
+      it('should parse SH13 (sacrifice bunt, pitcher to first)', () => {
+        const event = parseDetailedEvent('SH13');
+        expect(event.primaryEventType).toBe('SH');
+        expect(event.isOut).toBe(true);
+        expect(event.fielders.length).toBe(2);
+        expect(event.fielders[0].position).toBe(1);
+        expect(event.fielders[1].position).toBe(3);
+      });
+
+      it('should parse SH23 (sacrifice bunt, catcher to first)', () => {
+        const event = parseDetailedEvent('SH23');
+        expect(event.primaryEventType).toBe('SH');
+        expect(event.fielders[0].position).toBe(2);
+        expect(event.fielders[1].position).toBe(3);
+      });
+
+      it('should parse SH35 (sacrifice bunt, first baseman to third)', () => {
+        const event = parseDetailedEvent('SH35');
+        expect(event.primaryEventType).toBe('SH');
+        expect(event.fielders[0].position).toBe(3);
+        expect(event.fielders[1].position).toBe(5);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 1.19 Sacrifice Fly Events
+    // -------------------------------------------------------------------------
+    describe('sacrifice flies', () => {
+      it('should parse SF (basic sacrifice fly)', () => {
+        const event = parseDetailedEvent('SF');
+        expect(event.primaryEventType).toBe('SF');
+        expect(event.isOut).toBe(true);
+        expect(event.outCount).toBe(1);
+      });
+
+      it('should parse SF7 (sacrifice fly to left field)', () => {
+        const event = parseDetailedEvent('SF7');
+        expect(event.primaryEventType).toBe('SF');
+        expect(event.isOut).toBe(true);
+        expect(event.fielders[0].position).toBe(7);
+      });
+
+      it('should parse SF8 (sacrifice fly to center field)', () => {
+        const event = parseDetailedEvent('SF8');
+        expect(event.primaryEventType).toBe('SF');
+        expect(event.isOut).toBe(true);
+        expect(event.fielders[0].position).toBe(8);
+      });
+
+      it('should parse SF9 (sacrifice fly to right field)', () => {
+        const event = parseDetailedEvent('SF9');
+        expect(event.primaryEventType).toBe('SF');
+        expect(event.isOut).toBe(true);
+        expect(event.fielders[0].position).toBe(9);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 1.20 Wild Pitch, Passed Ball, Balk
     // -------------------------------------------------------------------------
     describe('miscellaneous events', () => {
       it('should parse WP (wild pitch)', () => {
@@ -1355,7 +1430,57 @@ describe('Event Translation', () => {
     });
 
     // -------------------------------------------------------------------------
-    // 2.11 Double Play Translation
+    // 2.11 Sacrifice Hit Translation
+    // -------------------------------------------------------------------------
+    describe('sacrifice hit translation', () => {
+      it('should translate SH (basic sacrifice bunt)', () => {
+        const event = parseDetailedEvent('SH');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice bunt');
+      });
+
+      it('should translate SH13 (sacrifice bunt, pitcher to first)', () => {
+        const event = parseDetailedEvent('SH13');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice bunt, pitcher to first baseman');
+      });
+
+      it('should translate SH23 (sacrifice bunt, catcher to first)', () => {
+        const event = parseDetailedEvent('SH23');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice bunt, catcher to first baseman');
+      });
+
+      it('should translate SH35 (sacrifice bunt, first baseman to third)', () => {
+        const event = parseDetailedEvent('SH35');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice bunt, first baseman to third baseman');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 2.12 Sacrifice Fly Translation
+    // -------------------------------------------------------------------------
+    describe('sacrifice fly translation', () => {
+      it('should translate SF (basic sacrifice fly)', () => {
+        const event = parseDetailedEvent('SF');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice fly');
+      });
+
+      it('should translate SF7 (sacrifice fly to left)', () => {
+        const event = parseDetailedEvent('SF7');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice fly to left fielder');
+      });
+
+      it('should translate SF8 (sacrifice fly to center)', () => {
+        const event = parseDetailedEvent('SF8');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice fly to center fielder');
+      });
+
+      it('should translate SF9 (sacrifice fly to right)', () => {
+        const event = parseDetailedEvent('SF9');
+        expect(translateDetailedEvent(event)).toBe('Sacrifice fly to right fielder');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 2.13 Double Play Translation
     // -------------------------------------------------------------------------
     describe('double play translation', () => {
       it('should translate 643 (6-4-3 double play)', () => {
@@ -1816,7 +1941,52 @@ describe('Event Translation', () => {
     });
 
     // -------------------------------------------------------------------------
-    // 3.15 Complex Events
+    // 3.15 Sacrifice Hits and Flies
+    // -------------------------------------------------------------------------
+    describe('sacrifice hits and flies', () => {
+      it('should translate SH', () => {
+        expect(translateEvent('SH')).toBe('Sacrifice bunt');
+      });
+
+      it('should translate SH13', () => {
+        expect(translateEvent('SH13')).toBe('Sacrifice bunt, pitcher to first baseman');
+      });
+
+      it('should translate SH23', () => {
+        expect(translateEvent('SH23')).toBe('Sacrifice bunt, catcher to first baseman');
+      });
+
+      it('should translate SH/BG', () => {
+        expect(translateEvent('SH/BG')).toBe('Sacrifice bunt');
+      });
+
+      it('should translate SF', () => {
+        expect(translateEvent('SF')).toBe('Sacrifice fly');
+      });
+
+      it('should translate SF7', () => {
+        expect(translateEvent('SF7')).toBe('Sacrifice fly to left fielder');
+      });
+
+      it('should translate SF8', () => {
+        expect(translateEvent('SF8')).toBe('Sacrifice fly to center fielder');
+      });
+
+      it('should translate SF9', () => {
+        expect(translateEvent('SF9')).toBe('Sacrifice fly to right fielder');
+      });
+
+      it('should translate SF/F9', () => {
+        expect(translateEvent('SF/F9')).toBe('Sacrifice fly to right fielder');
+      });
+
+      it('should translate SF9.3-H', () => {
+        expect(translateEvent('SF9.3-H')).toBe('Sacrifice fly to right fielder');
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 3.16 Complex Events
     // -------------------------------------------------------------------------
     describe('complex events', () => {
       it('should translate complex single with advancements', () => {

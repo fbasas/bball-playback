@@ -70,7 +70,11 @@ export enum BasicEventType {
   Balk = 'BK',
   GroundRuleDouble = 'DGR',
   NoPlay = 'NP',
-  
+
+  // Sacrifice events
+  SacrificeHit = 'SH',
+  SacrificeFly = 'SF',
+
   // Unknown event
   Unknown = 'UNKNOWN'
 }
@@ -101,7 +105,9 @@ export const EVENT_TYPE_DESCRIPTIONS: Record<string, string> = {
   'PB': 'Passed ball',
   'BK': 'Balk',
   'DGR': 'Ground rule double',
-  'NP': 'No play'
+  'NP': 'No play',
+  'SH': 'Sacrifice bunt',
+  'SF': 'Sacrifice fly'
 };
 
 /**

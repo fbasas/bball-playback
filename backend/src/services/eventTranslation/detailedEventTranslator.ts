@@ -63,7 +63,9 @@ function translatePrimaryEvent(event: DetailedBaseballEvent): string {
     'PB': 'Passed ball',
     'BK': 'Balk',
     'DGR': 'Ground rule double',
-    'NP': 'No play'
+    'NP': 'No play',
+    'SH': 'Sacrifice bunt',
+    'SF': 'Sacrifice fly'
   };
   
   // Handle double plays and triple plays
@@ -101,7 +103,20 @@ function translatePrimaryEvent(event: DetailedBaseballEvent): string {
     const baseDesc = base === '2' ? 'second base' : base === '3' ? 'third base' : 'home';
     return `Picked off and caught stealing ${baseDesc}`;
   }
-  
+
+  // Handle sacrifice bunt with fielders (e.g., SH13 = "Sacrifice bunt, pitcher to first baseman")
+  if (event.primaryEventType === 'SH' && event.fielders.length >= 2) {
+    const firstFielder = event.fielders[0];
+    const lastFielder = event.fielders[event.fielders.length - 1];
+    return `Sacrifice bunt, ${FIELD_POSITION_NAMES[firstFielder.position] || 'fielder'} to ${FIELD_POSITION_NAMES[lastFielder.position] || 'fielder'}`;
+  }
+
+  // Handle sacrifice fly with fielder (e.g., SF9 = "Sacrifice fly to right fielder")
+  if (event.primaryEventType === 'SF' && event.fielders.length > 0) {
+    const fielder = event.fielders[0];
+    return `Sacrifice fly to ${FIELD_POSITION_NAMES[fielder.position] || 'fielder'}`;
+  }
+
   // Handle fielder-to-fielder plays for non-double/triple plays
   if (event.fielders.length >= 2 && !event.isDoublePlay && !event.isTriplePlay && 
       event.primaryEventType === 'G' && /^[1-9]+$/.test(event.rawEvent.split('/')[0])) {
@@ -173,6 +188,11 @@ function translateLocation(event: DetailedBaseballEvent): string {
  * @returns A description of the fielders involved
  */
 function translateFielders(event: DetailedBaseballEvent): string {
+  // For sacrifice hits and flies, fielder info is already in translatePrimaryEvent
+  if (event.primaryEventType === 'SH' || event.primaryEventType === 'SF') {
+    return '';
+  }
+
   // For errors, return the fielder who made the error
   if (event.isError) {
     const errorFielder = event.fielders.find(f => f.role === 'error');
