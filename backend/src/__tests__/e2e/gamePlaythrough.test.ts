@@ -23,6 +23,7 @@ import type { SimplifiedBaseballState } from '../../../../common/types/Simplifie
 let GamePlaybackService: any;
 let ResourceNotFoundError: any;
 let scoreRepository: any;
+let db: any;
 
 // ---------------------------------------------------------------------------
 // Skip unless REPLAY_TEST_DB_HOST is set
@@ -223,12 +224,15 @@ describeIf('Game Playthrough E2E', () => {
     ResourceNotFoundError = errors.ResourceNotFoundError;
     const scoreRepo = await import('../../database/repositories/ScoreRepository');
     scoreRepository = scoreRepo.scoreRepository;
+    const database = await import('../../config/database');
+    db = database.db;
 
     validationDb = createValidationDb();
   });
 
   afterAll(async () => {
     if (validationDb) await validationDb.destroy();
+    if (db) await db.destroy();
   });
 
   describe('Known game: NYA202410300 (World Series Game 5)', () => {
